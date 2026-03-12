@@ -228,3 +228,21 @@ export const ERROR_CODES = {
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;
+
+// ============================================
+// PAYU ERROR CODES
+// ============================================
+
+export const PAYU_ERROR_CODES = {
+    HASH_VERIFICATION_FAILED: 'HASH_VERIFICATION_FAILED',
+    INVALID_AMOUNT: 'INVALID_AMOUNT',
+    MISSING_CONFIG: 'MISSING_PAYU_CONFIG',
+    TRANSACTION_NOT_FOUND: 'TRANSACTION_NOT_FOUND',
+    DUPLICATE_TRANSACTION: 'DUPLICATE_TRANSACTION',
+    INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
+    FRAUD_BLOCKED: 'FRAUD_BLOCKED',
+    PAYU_ERROR: 'PAYU_ERROR',
+    WEBHOOK_PROCESSING_FAILED: 'WEBHOOK_PROCESSING_FAILED',
+} as const;
+
+export type PayuErrorCode = keyof typeof PAYU_ERROR_CODES;

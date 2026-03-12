@@ -182,11 +182,7 @@ async function buildFraudContext(userId: string): Promise<FraudContext> {
         // Fetch transaction history in parallel
         const fiveMinutesAgo = subMinutes(new Date(), 5);
 
-        const [last5Debits, debitsLast5Minutes, mostRecentCredit] = await Promise.all<[
-            RawLedgerEntry[],
-            RawLedgerEntry[],
-            { id: string; amount: number; createdAt: Date } | null
-        ]>([
+        const [last5Debits, debitsLast5Minutes, mostRecentCredit]: [RawLedgerEntry[], RawLedgerEntry[], { id: string; amount: number; createdAt: Date } | null] = await Promise.all([
             // Last 5 debit entries for whitelist check
             prisma.ledgerEntry.findMany({
                 where: {
@@ -250,19 +246,19 @@ async function buildFraudContext(userId: string): Promise<FraudContext> {
             accountCreationDate: user.createdAt,
             daysSinceCreation,
             availableBalancePaisa: balance.availablePaisa,
-            last5Debits: last5Debits.map((d) => ({
-                id: d.id,
-                amountPaisa: d.amount,
-                merchantId: d.merchantId || '',
-                merchantName: d.merchantName || 'Unknown',
-                createdAt: d.createdAt,
+            last5Debits: last5Debits.map((entry) => ({
+                id: entry.id,
+                amountPaisa: entry.amount,
+                merchantId: entry.merchantId || '',
+                merchantName: entry.merchantName || 'Unknown',
+                createdAt: entry.createdAt,
             })),
-            debitsLast5Minutes: debitsLast5Minutes.map((d) => ({
-                id: d.id,
-                amountPaisa: d.amount,
-                merchantId: d.merchantId || '',
-                merchantName: d.merchantName || 'Unknown',
-                createdAt: d.createdAt,
+            debitsLast5Minutes: debitsLast5Minutes.map((entry) => ({
+                id: entry.id,
+                amountPaisa: entry.amount,
+                merchantId: entry.merchantId || '',
+                merchantName: entry.merchantName || 'Unknown',
+                createdAt: entry.createdAt,
             })),
             mostRecentCredit: mostRecentCredit
                 ? {
