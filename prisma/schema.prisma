@@ -1,0 +1,140 @@
+// ============================================
+// GRABCASH WALLET - PRISMA SCHEMA
+// CURRENCY: INR (Indian Rupees) - All amounts stored in PAISA (₹1 = 100 paisa)
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String                  @id @default(uuid())
+  email           String                  @unique
+  phone           String?
+  name            String
+  passwordHash    String                  @map("password_hash")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  recommendations AdvisorRecommendation[]
+  fds             FDRecord[]
+  ledgerEntries   LedgerEntry[]
+  wallet          Wallet?
+
+  @@map("users")
+}
+
+model Wallet {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  availableBalance Int      @map("available_balance")
+  pendingBalance   Int      @map("pending_balance")
+  lockedBalance    Int      @map("locked_balance")
+  lifetimeEarned   Int      @map("lifetime_earned")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+model LedgerEntry {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  type         String
+  direction    String
+  amount       Int
+  balanceAfter Int       @map("balance_after")
+  status       String    @default("PENDING")
+  merchantId   String?   @map("merchant_id")
+  merchantName String?   @map("merchant_name")
+  category     String?
+  description  String?
+  fdId         String?   @map("fd_id")
+  isFlagged    Boolean   @default(false) @map("is_flagged")
+  flagReason   String?   @map("flag_reason")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  settledAt    DateTime? @map("settled_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("ledger_entries")
+}
+
+model FDRecord {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  principal      Int
+  interestRate   Float     @map("interest_rate")
+  tenureDays     Int       @map("tenure_days")
+  maturityAmount Int       @map("maturity_amount")
+  interestEarned Int       @map("interest_earned")
+  startDate      DateTime  @map("start_date")
+  maturityDate   DateTime  @map("maturity_date")
+  brokenAt       DateTime? @map("broken_at")
+  status         String    @default("ACTIVE")
+  penaltyAmount  Int?      @map("penalty_amount")
+  actualReturn   Int?      @map("actual_return")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([maturityDate])
+  @@map("fd_records")
+}
+
+model AdvisorRecommendation {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  summary        String
+  recommendation String
+  actionItems    String   @map("action_items")
+  alert          String?
+  contextUsed    String   @map("context_used")
+  generatedAt    DateTime @default(now()) @map("generated_at")
+  isFresh        Boolean  @default(true) @map("is_fresh")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([generatedAt])
+  @@map("advisor_recommendations")
+}
+
+model Merchant {
+  id           String   @id @default(uuid())
+  name         String
+  category     String
+  logoUrl      String?  @map("logo_url")
+  cashbackRate Float    @map("cashback_rate")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([category])
+  @@index([isActive])
+  @@map("merchants")
+}
+
+model OTPVerification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  code      String
+  purpose   String
+  expiresAt DateTime  @map("expires_at")
+  isUsed    Boolean   @default(false) @map("is_used")
+  usedAt    DateTime? @map("used_at")
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([code])
+  @@map("otp_verifications")
+}
