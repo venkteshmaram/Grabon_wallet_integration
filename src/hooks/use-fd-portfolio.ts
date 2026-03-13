@@ -3,7 +3,7 @@
 // Step 4: API Client + Custom Hooks
 // ============================================
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWalletStore } from '@/store/wallet-store';
 import { apiPost } from '@/lib/api-client';
 import type { FDRecord } from '@/store/wallet-store';
@@ -69,10 +69,14 @@ interface BreakFDResponse {
 export function useFdPortfolio(userId: string | undefined): UseFdPortfolioReturn {
     // Get state and actions from wallet store
     const fds = useWalletStore((state) => state.fds) ?? [];
-    const isLoading = useWalletStore((state) => state.isLoading);
-    const error = useWalletStore((state) => state.error);
+    const isLoading = useWalletStore((state) => state.status.fds.loading);
+    const error = useWalletStore((state) => state.status.fds.error);
     const fetchFDs = useWalletStore((state) => state.fetchFDs);
     const fetchWallet = useWalletStore((state) => state.fetchWallet);
+
+    // Track if we've attempted a fetch to prevent race conditions
+    const hasAttemptedFetch = useRef(false);
+    const lastUserId = useRef<string | undefined>(undefined);
 
     /**
      * Compute total portfolio value
@@ -103,7 +107,7 @@ export function useFdPortfolio(userId: string | undefined): UseFdPortfolioReturn
 
                 const response = await apiPost<CreateFDResponse>('/api/fd/create', {
                     userId,
-                    principal: principalPaisa,
+                    principalPaisa: principalPaisa,
                     tenureDays,
                 });
 
@@ -120,7 +124,7 @@ export function useFdPortfolio(userId: string | undefined): UseFdPortfolioReturn
                 return null;
             } catch (err) {
                 console.error('Failed to create FD:', err);
-                return null;
+                throw err;
             }
         },
         [userId, fetchFDs, fetchWallet]
@@ -180,11 +184,18 @@ export function useFdPortfolio(userId: string | undefined): UseFdPortfolioReturn
             return;
         }
 
-        // Only fetch if FD data is not already present
-        if (fds.length === 0) {
+        // Reset fetch attempt if userId changes
+        if (lastUserId.current !== userId) {
+            hasAttemptedFetch.current = false;
+            lastUserId.current = userId;
+        }
+
+        // Only fetch once per userId session to prevent race conditions
+        if (!hasAttemptedFetch.current) {
+            hasAttemptedFetch.current = true;
             fetchFDs(userId);
         }
-    }, [userId, fds.length, fetchFDs]);
+    }, [userId, fetchFDs]);
 
     return {
         fds,

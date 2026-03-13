@@ -63,108 +63,107 @@ export default function DashboardPage() {
     return (
         <div className="mx-auto max-w-[1200px] space-y-6 pb-8">
             {/* Welcome Header */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-                    Welcome back, {userName || 'User'}
+            <div className="mb-6 text-center sm:text-left">
+                <h1 className="text-4xl font-black text-[var(--text-primary)] mb-1 tracking-tight">
+                    Welcome back, <span className="text-gold shadow-[0_0_15px_rgba(163,230,53,0.3)]">{userName || 'User'}</span>
                 </h1>
-                <p className="text-sm text-[var(--text-secondary)]">
-                    Here's your financial overview
+                <p className="text-[var(--text-secondary)]">
+                    Here's a quick summary of your account
                 </p>
             </div>
 
-            {/* Section 1: Balance Card */}
-            <section>
-                <BalanceCard
-                    wallet={wallet}
-                    accountAge="Member"
-                    isLoading={walletLoading}
-                    error={walletError}
-                    onRetry={() => window.location.reload()}
-                />
-            </section>
+            {/* Main Grid: Balance & Advisor */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Section 1: Balance Card */}
+                <section className="h-full">
+                    <BalanceCard
+                        wallet={wallet}
+                        accountAge="Member"
+                        isLoading={walletLoading}
+                        error={walletError}
+                        onRetry={() => window.location.reload()}
+                    />
+                </section>
 
-            {/* Section 2: Claude Advisor Card */}
-            <section>
-                <AdvisorCard
-                    advisor={advisorData || advisorDataStore}
-                    isLoading={advisorLoading}
-                    isRefreshing={isRefreshing}
-                    error={null}
-                    onRefresh={refresh}
-                />
-            </section>
+                {/* Section 2: Claude Advisor Card */}
+                <section className="h-full">
+                    <AdvisorCard
+                        advisor={advisorData || advisorDataStore}
+                        isLoading={advisorLoading}
+                        isRefreshing={isRefreshing}
+                        error={null}
+                        onRefresh={refresh}
+                    />
+                </section>
+            </div>
 
-            {/* Section 3: Transaction Timeline */}
-            <section>
-                <div className="rounded-xl border border-[var(--bg-border)] bg-[var(--bg-card)] p-6">
-                    <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">
-                        Recent Transactions
-                    </h2>
-                    <div className="min-h-[200px]">
-                        <TransactionTimeline
-                            transactions={last10Transactions}
-                            isLoading={transactionsLoading}
-                            filter={transactionFilter}
-                            onFilterChange={setTransactionFilter}
-                            maxItems={10}
-                            showViewAll={true}
-                            onViewAll={handleViewAllTransactions}
-                        />
+            {/* Quick Actions / Next Steps */}
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <button
+                    onClick={() => router.push('/merchants')}
+                    className="flex flex-col items-center justify-center p-6 rounded-2xl border border-zinc-800/50 bg-[rgba(15,15,15,0.7)] backdrop-blur-xl hover:border-gold/50 transition-all group"
+                >
+                    <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
                     </div>
+                    <span className="font-bold text-sm text-[var(--text-primary)]">Pay Merchant</span>
+                    <span className="text-xs text-[var(--text-secondary)] mt-1">Earn instant cashback</span>
+                </button>
+
+                <button
+                    onClick={() => router.push('/wallet')}
+                    className="flex flex-col items-center justify-center p-6 rounded-2xl border border-zinc-800/50 bg-[rgba(15,15,15,0.7)] backdrop-blur-xl hover:border-gold/50 transition-all group"
+                >
+                    <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                    </div>
+                    <span className="font-bold text-sm text-[var(--text-primary)]">View Wallet</span>
+                    <span className="text-xs text-[var(--text-secondary)] mt-1">Check spend analytics</span>
+                </button>
+
+                <button
+                    onClick={() => router.push('/wallet/invest')}
+                    className="flex flex-col items-center justify-center p-6 rounded-2xl border border-zinc-800/50 bg-[rgba(15,15,15,0.7)] backdrop-blur-xl hover:border-gold/50 transition-all group"
+                >
+                    <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <span className="font-bold text-sm text-[var(--text-primary)]">Invest in FD</span>
+                    <span className="text-xs text-[var(--text-secondary)] mt-1">Earn 7.5% interest</span>
+                </button>
+            </section>
+
+            {/* Recent Activity Mini-Timeline */}
+            <section className="rounded-2xl border border-zinc-800/50 bg-[rgba(15,15,15,0.7)] backdrop-blur-xl p-8 shadow-2xl">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <div className="w-1.5 h-6 bg-gold rounded-full" />
+                        Recent Activity
+                    </h2>
+                    <button
+                        onClick={() => router.push('/wallet/transactions')}
+                        className="text-sm font-medium text-gold hover:underline"
+                    >
+                        View All
+                    </button>
                 </div>
-            </section>
 
-            {/* Section 4: Investment Portfolio */}
-            <section>
-                <FDPortfolio
-                    fds={fdData}
-                    isLoading={fdsLoading}
-                    onBreakFD={handleBreakFD}
-                    isBreaking={false}
-                />
-            </section>
-
-            {/* Section 5: Spend Analytics */}
-            <section>
-                <div className="rounded-xl border border-[var(--bg-border)] bg-[var(--bg-card)] p-6">
-                    <h2 className="mb-6 text-lg font-semibold text-[var(--text-primary)]">
-                        Spend Analytics
-                    </h2>
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        {/* Donut Chart */}
-                        <div className="rounded-lg bg-[var(--bg-primary)] p-4">
-                            <h3 className="mb-4 text-sm font-medium text-[var(--text-secondary)]">
-                                Spending by Category
-                            </h3>
-                            <DonutChart
-                                data={analyticsData?.categoryBreakdown || []}
-                                totalCashback={analyticsData?.savingsRate?.lifetimeEarnedRupees || 0}
-                                isLoading={analyticsLoading}
-                            />
-                        </div>
-
-                        {/* Bar Chart */}
-                        <div className="rounded-lg bg-[var(--bg-primary)] p-4">
-                            <h3 className="mb-4 text-sm font-medium text-[var(--text-secondary)]">
-                                Monthly Trend
-                            </h3>
-                            <BarChart
-                                data={analyticsData?.monthlyTrend || []}
-                                isLoading={analyticsLoading}
-                            />
-                        </div>
-
-                        {/* Top Merchants - Full Width */}
-                        <div className="rounded-lg bg-[var(--bg-primary)] p-4 lg:col-span-2">
-                            <h3 className="mb-4 text-sm font-medium text-[var(--text-secondary)]">
-                                Top Merchants
-                            </h3>
-                            <TopMerchants
-                                merchants={analyticsData?.topMerchants || []}
-                                isLoading={analyticsLoading}
-                            />
-                        </div>
-                    </div>
+                <div className="min-h-[150px]">
+                    <TransactionTimeline
+                        transactions={last10Transactions.slice(0, 5)}
+                        isLoading={transactionsLoading}
+                        filter={transactionFilter}
+                        onFilterChange={setTransactionFilter}
+                        maxItems={5}
+                        showViewAll={false}
+                        showFilters={false}
+                    />
                 </div>
             </section>
         </div>

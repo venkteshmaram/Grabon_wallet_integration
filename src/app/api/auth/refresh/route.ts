@@ -58,7 +58,7 @@ async function postHandler(
         const token = jwt.sign(
             { userId, email },
             jwtSecret,
-            { expiresIn: (process.env.JWT_EXPIRY || '24h') as jwt.SignOptions['expiresIn'] }
+            { expiresIn: (process.env.JWT_EXPIRY || '48h') as jwt.SignOptions['expiresIn'] }
         );
 
         return NextResponse.json(

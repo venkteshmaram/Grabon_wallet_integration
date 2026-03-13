@@ -3,7 +3,7 @@
 // Step 4: API Client + Custom Hooks
 // ============================================
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWalletStore } from '@/store/wallet-store';
 import type { LedgerEntry } from '@/store/wallet-store';
 
@@ -97,9 +97,14 @@ export function useTransactions({
 }: UseTransactionsOptions): UseTransactionsReturn {
     // Get state and actions from wallet store
     const ledger = useWalletStore((state) => state.ledger);
-    const isLoading = useWalletStore((state) => state.isLoading);
-    const error = useWalletStore((state) => state.error);
+    const isLoading = useWalletStore((state) => state.status.ledger.loading);
+    const error = useWalletStore((state) => state.status.ledger.error);
     const fetchLedger = useWalletStore((state) => state.fetchLedger);
+
+    // Track if we've attempted initial fetch to prevent race conditions
+    const hasAttemptedInitialFetch = useRef(false);
+    const lastUserId = useRef<string | undefined>(undefined);
+    const lastFilterKey = useRef<string>('');;
 
     /**
      * Build API filters based on UI filter type
@@ -186,6 +191,11 @@ export function useTransactions({
         });
     }, [userId, apiFilters, fetchLedger, merchantId]);
 
+    // Create a filter key to detect meaningful filter changes
+    const currentFilterKey = useMemo(() => {
+        return `${filter}-${page}-${pageSize}-${startDate || ''}-${endDate || ''}-${merchantId || ''}`;
+    }, [filter, page, pageSize, startDate, endDate, merchantId]);
+
     /**
      * Auto-fetch on mount and when dependencies change
      */
@@ -193,6 +203,20 @@ export function useTransactions({
         if (!userId) {
             return;
         }
+
+        // Reset initial fetch flag if userId changes
+        if (lastUserId.current !== userId) {
+            hasAttemptedInitialFetch.current = false;
+            lastUserId.current = userId;
+        }
+
+        // Skip if we've already fetched with these exact filters
+        if (hasAttemptedInitialFetch.current && lastFilterKey.current === currentFilterKey) {
+            return;
+        }
+
+        hasAttemptedInitialFetch.current = true;
+        lastFilterKey.current = currentFilterKey;
 
         fetchLedger(userId, {
             type: apiFilters.type,
@@ -203,7 +227,7 @@ export function useTransactions({
             page: apiFilters.page,
             limit: apiFilters.limit,
         });
-    }, [userId, apiFilters, fetchLedger, merchantId]);
+    }, [userId, apiFilters, fetchLedger, merchantId, currentFilterKey]);
 
     return {
         transactions: filteredTransactions,

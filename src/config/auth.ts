@@ -1,6 +1,6 @@
 export const AUTH_CONFIG = {
     JWT_SECRET: process.env.JWT_SECRET!,
-    JWT_EXPIRY: process.env.JWT_EXPIRY || '24h',
+    JWT_EXPIRY: process.env.JWT_EXPIRY || '48h',
 
     // Password requirements
     MIN_PASSWORD_LENGTH: 8,

@@ -5,6 +5,7 @@
 // ============================================
 
 import { prisma } from '@/lib/prisma';
+import { logToFile } from '@/lib/logger';
 import { addMinutes } from 'date-fns';
 import {
     OTPVerificationResult,
@@ -79,6 +80,7 @@ export async function generateOTP(
             otpId: otpRecord.id,
         };
     } catch (error) {
+        console.error('[OTP_SERVICE] generateOTP error:', error);
         if (error instanceof OTPError) throw error;
 
         throw new OTPError(
@@ -229,6 +231,8 @@ export async function verifyOTP(
 
         // Step 7: Success - mark OTP as used
         await markOTPAsUsed(otpRecord.id);
+
+        logToFile('[OTP_SERVICE] OTP verified successfully', { userId: input.userId, purpose: input.purpose });
 
         return {
             verified: true,

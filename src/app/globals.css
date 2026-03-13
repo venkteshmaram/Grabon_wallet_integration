@@ -15,18 +15,18 @@
   --font-display: 'Outfit', system-ui, sans-serif;
 
   /* Background Colors */
-  --bg-primary: #1A1A1A;
-  --bg-card: #242424;
-  --bg-border: #2E2E2E;
-  --bg-input: #1A1A1A;
-  --bg-hover: #2A2A2A;
+  --bg-primary: #000000;
+  --bg-card: #0F0F0F;
+  --bg-border: #1F1F1F;
+  --bg-input: #0A0A0A;
+  --bg-hover: #1A1A1A;
 
-  /* Primary Accent - Gold */
-  --gold: #F5A623;
-  --gold-hover: #F7B84B;
-  --gold-muted: rgba(245, 166, 35, 0.12);
-  --gold-subtle: rgba(245, 166, 35, 0.08);
-  --gold-border: rgba(245, 166, 35, 0.3);
+  /* Primary Accent - Lime Green (New Brand) */
+  --gold: #A3E635;
+  --gold-hover: #BEF264;
+  --gold-muted: rgba(163, 230, 53, 0.12);
+  --gold-subtle: rgba(163, 230, 53, 0.08);
+  --gold-border: rgba(163, 230, 53, 0.3);
 
   /* Semantic Colors */
   --green: #22C55E;
@@ -41,11 +41,11 @@
   --orange-muted: rgba(249, 115, 22, 0.12);
 
   /* Text Colors */
-  --text-primary: #F8F8F8;
-  --text-secondary: #A0A0A0;
-  --text-tertiary: #707070;
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0B0B0;
+  --text-tertiary: #888888;
   --text-disabled: #606060;
-  --text-inverse: #1A1A1A;
+  --text-inverse: #000000;
 
   /* Layout */
   --sidebar-width: 260px;
@@ -98,6 +98,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+  height: 100%;
 }
 
 body {
@@ -105,8 +107,9 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
-  min-height: 100vh;
+  height: 100%;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
 h1,
@@ -757,8 +760,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
    ============================================ */
 
 ::selection {
-  background-color: var(--gold-muted);
-  color: var(--gold);
+  background-color: var(--gold);
+  color: #000000;
 }
 
 /* ============================================

@@ -32,6 +32,7 @@ export {
     creditCashback,
     settlePendingEntry,
     spendBalance,
+    processMerchantPayment,
     lockForFD,
     unlockFromFD,
     holdForFraud,

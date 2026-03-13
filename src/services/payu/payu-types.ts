@@ -132,6 +132,8 @@ export interface InitiatePaymentInput {
     merchantName: string;
     /** Product description */
     productInfo?: string;
+    /** Amount to be deducted from wallet balance (in paisa) */
+    appliedBalancePaisa?: number;
 }
 
 /**

@@ -165,7 +165,7 @@ async function getCategoryBreakdown(
         where: {
             userId,
             direction: 'CREDIT',
-            status: 'SETTLED',
+            status: { in: ['SETTLED', 'PENDING'] },
             category: { not: null },
             createdAt: { gte: since },
         },
@@ -203,7 +203,7 @@ async function getMonthlyTrend(
     const entries = await prisma.ledgerEntry.findMany({
         where: {
             userId,
-            status: 'SETTLED',
+            status: { in: ['SETTLED', 'PENDING'] },
             createdAt: { gte: since },
             type: { not: 'CASHBACK_SETTLEMENT' }, // Avoid double counting settlement transfers
         },
@@ -270,7 +270,7 @@ async function getTopMerchants(
         where: {
             userId,
             direction: 'CREDIT',
-            status: 'SETTLED',
+            status: { in: ['SETTLED', 'PENDING'] },
             merchantId: { not: null },
             createdAt: { gte: since },
         },
@@ -330,7 +330,7 @@ async function getSavingsRate(
             where: {
                 userId,
                 direction: 'CREDIT',
-                status: 'SETTLED',
+                status: { in: ['SETTLED', 'PENDING'] },
             },
             _sum: { amount: true },
         }),
@@ -338,7 +338,7 @@ async function getSavingsRate(
             where: {
                 userId,
                 direction: 'DEBIT',
-                status: 'SETTLED',
+                status: { in: ['SETTLED', 'PENDING'] },
             },
             _sum: { amount: true },
         }),

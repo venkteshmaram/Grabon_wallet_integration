@@ -6,6 +6,7 @@
 import { prisma } from '@/lib/prisma';
 import { checkTransaction } from '@/services/fraud';
 import { getWalletBalance, spendBalance } from '@/services/wallet';
+import { logToFile } from '@/lib/logger';
 
 import {
     InitiatePaymentInput,
@@ -32,6 +33,7 @@ interface PendingTransactionData {
     amountPaisa: number;
     merchantId: string;
     merchantName: string;
+    appliedBalancePaisa?: number;
     createdAt: Date;
 }
 
@@ -59,6 +61,7 @@ interface PendingTransactionData {
 export async function initiatePayment(
     input: InitiatePaymentInput
 ): Promise<PaymentInitiationResult> {
+    logToFile('[PAYU_SERVICE] Initiating payment', input);
     // Step 1: Validate amount
     validateAmountPaisa(input.amountPaisa);
 
@@ -81,11 +84,13 @@ export async function initiatePayment(
             );
         }
 
-        // Step 3: Verify available balance
+        // Step 3: Verify available balance if split payment is used
         const walletBalance = await getWalletBalance(input.userId);
-        if (walletBalance.availablePaisa < input.amountPaisa) {
+        const appliedPaisa = input.appliedBalancePaisa || 0;
+        
+        if (appliedPaisa > 0 && walletBalance.availablePaisa < appliedPaisa) {
             throw new PayUError(
-                'Insufficient available balance',
+                'Insufficient available balance to apply to this transaction',
                 PAYU_ERROR_CODES.INSUFFICIENT_BALANCE
             );
         }
@@ -100,6 +105,7 @@ export async function initiatePayment(
 
         // Step 5: If fraud flagged, return early
         if (fraudCheck.isFlagged) {
+            logToFile('[PAYU_SERVICE] Fraud check flagged transaction', fraudCheck);
             return {
                 isFlagged: true,
                 flagReason: fraudCheck.flagReason || 'Transaction flagged by fraud engine',
@@ -121,7 +127,8 @@ export async function initiatePayment(
             user.name,
             input.merchantId,
             input.merchantName,
-            user.phone || undefined
+            appliedPaisa,
+            user.phone || ''
         );
 
         // Step 8: Store pending transaction (for webhook verification)
@@ -130,6 +137,7 @@ export async function initiatePayment(
             amountPaisa: input.amountPaisa,
             merchantId: input.merchantId,
             merchantName: input.merchantName,
+            appliedBalancePaisa: appliedPaisa,
             createdAt: new Date(),
         });
 
@@ -251,12 +259,15 @@ export async function handlePayUSuccess(
 
         // Step 3: Get pending transaction data
         const pendingTx = getPendingTransaction(txnId);
+        logToFile('[PAYU_SERVICE] Pending transaction lookup', { txnId, found: !!pendingTx, data: pendingTx });
 
         // Step 4: Extract transaction data (from memory or UDF fields)
         // UDF fields are trusted because hash verification passed
         const userId = pendingTx?.userId || responseParams.udf1 || '';
         const merchantId = pendingTx?.merchantId || responseParams.udf2 || '';
         const merchantName = pendingTx?.merchantName || responseParams.udf3 || 'Unknown Merchant';
+
+        logToFile('[PAYU_SERVICE] Extracted transaction data', { userId, merchantId, merchantName, udf1: responseParams.udf1, udf2: responseParams.udf2 });
 
         if (!userId || !merchantId) {
             throw new PayUError(
@@ -266,19 +277,72 @@ export async function handlePayUSuccess(
             );
         }
 
-        // Step 5: Calculate amount (from memory or response)
-        // Response amount is in rupees with 2 decimals, convert to paisa
-        const amountPaisa = pendingTx?.amountPaisa ||
+        // Step 5: Calculate amounts
+        const totalAmountPaisa = pendingTx?.amountPaisa ||
             Math.round(parseFloat(responseParams.amount) * 100);
+        
+        // Use UDF4 as fallback if pendingTx is lost (e.g. server restart)
+        const rewardPortionPaisa = pendingTx?.appliedBalancePaisa ?? 
+            parseInt(responseParams.udf4 || '0', 10);
+            
+        const externalPortionPaisa = totalAmountPaisa - rewardPortionPaisa;
 
-        // Step 6: Create ledger entry via wallet service
-        const ledgerEntry = await spendBalance({
-            userId,
-            amountPaisa,
-            merchantId,
-            merchantName,
-            description: `PayU Payment - TXN: ${txnId}`,
+        logToFile('[PAYU_SERVICE] Processing success webhook', {
+            txnId,
+            totalAmountPaisa,
+            rewardPortionPaisa,
+            externalPortionPaisa
         });
+
+        // Step 6: Record External Payment portion (funds from PayU)
+        let mainLedgerId = '';
+        const walletSvc = await import('@/services/wallet/wallet-service');
+
+        if (externalPortionPaisa > 0) {
+            const result = await walletSvc.recordExternalPayment({
+                userId,
+                amountPaisa: externalPortionPaisa,
+                merchantId,
+                merchantName,
+                description: `PayU External Payment - TXN: ${txnId}`,
+                type: 'PAYU_EXTERNAL',
+            });
+            mainLedgerId = result.id;
+        }
+
+        // Step 6a: Deduct Applied Wallet Rewards (funds from Wallet)
+        if (rewardPortionPaisa > 0) {
+            const result = await walletSvc.spendBalance({
+                userId,
+                amountPaisa: rewardPortionPaisa,
+                merchantId,
+                merchantName,
+                description: `Applied Reward Balance - TXN: ${txnId}`,
+                type: 'REWARD_SPEND',
+            });
+            if (!mainLedgerId) mainLedgerId = result.id;
+        }
+
+        // Step 6b: Award dynamic cashback on TOTAL amount
+        const merchant = await prisma.merchant.findUnique({ where: { id: merchantId } });
+        const rate = merchant?.cashbackRate ?? 5.0;
+        const cashbackAmount = Math.round(totalAmountPaisa * (rate / 100));
+
+        if (cashbackAmount > 0) {
+            const rewardEntry = await walletSvc.creditCashback({
+                userId,
+                amountPaisa: cashbackAmount,
+                merchantId,
+                merchantName,
+                category: merchant?.category || 'Reward',
+                description: `${rate}% Cashback for purchase at ${merchantName}`,
+            });
+
+            // Settle immediately if Food (Demo requirement)
+            if (merchant?.category === 'FOOD') {
+                await walletSvc.settlePendingEntry(rewardEntry.id);
+            }
+        }
 
         // Step 7: Clean up pending transaction (if exists)
         removePendingTransaction(txnId);
@@ -287,9 +351,9 @@ export async function handlePayUSuccess(
         return {
             success: true,
             txnId,
-            amountPaisa,
+            amountPaisa: totalAmountPaisa,
             message: 'Payment processed successfully',
-            ledgerEntryId: ledgerEntry.id,
+            ledgerEntryId: mainLedgerId,
         };
     } catch (error) {
         if (error instanceof PayUError) throw error;

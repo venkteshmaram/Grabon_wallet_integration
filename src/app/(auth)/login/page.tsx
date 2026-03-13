@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, Wallet } from 'lucide-react';
+import { Check as LucideCheck, Loader2, Wallet } from 'lucide-react';
 import { useAuthStore, PERSONAS } from '@/store/auth-store';
 import { useWalletStore } from '@/store/wallet-store';
 import { Button } from '@/components/ui/button';
@@ -129,22 +129,24 @@ export default function LoginPage() {
     return (
         <div className="w-full animate-fade-in-up">
             {/* Logo and Tagline */}
-            <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gold mb-4 shadow-gold">
-                    <Wallet className="w-8 h-8 text-background" />
+            <div className="flex flex-col items-center mb-10">
+                <div className="flex items-center gap-4 mb-2">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gold shadow-[0_0_20px_rgba(163,230,53,0.3)] transform transition-transform hover:scale-105 active:scale-95">
+                        <Wallet className="w-6 h-6 text-background" />
+                    </div>
+                    <h1 className="text-4xl font-black tracking-tighter">
+                        <span className="text-gold shadow-gold-sm">Grab</span>
+                        <span className="text-foreground">Cash</span>
+                    </h1>
                 </div>
-                <h1 className="text-4xl font-bold tracking-tight">
-                    <span className="text-gold">Grab</span>
-                    <span className="text-foreground">Cash</span>
-                </h1>
-                <p className="mt-2 text-base text-muted-foreground">
-                    Your cashback. Invested.
+                <p className="text-[var(--text-secondary)] text-sm font-medium tracking-wide">
+                    Your cashback. <span className="text-gold">Invested.</span>
                 </p>
             </div>
 
             {/* Main Card */}
-            <Card className="border-border shadow-lg">
-                <CardContent className="p-8">
+            <Card className="border-zinc-800/50 bg-[rgba(15,15,15,0.7)] backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden">
+                <CardContent className="p-6 sm:p-10">
                     {/* Error Banner */}
                     {(formError || error) && (
                         <div className="mb-6 p-3 bg-red-muted border border-red/30 rounded-lg">
@@ -207,33 +209,30 @@ export default function LoginPage() {
                     </div>
 
                     {/* Persona Quick Login Buttons */}
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                         {PERSONAS.map((persona) => (
                             <button
                                 type="button"
                                 key={persona.id}
                                 onClick={() => handlePersonaLogin(persona.email, persona.id)}
                                 disabled={loading.manual || !!loading.personaId}
-                                className="w-full h-11 px-4 bg-transparent border border-border hover:bg-gold-muted hover:border-gold rounded-lg transition-all duration-fast flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed group"
+                                className="group relative flex items-center gap-3 p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/50 transition-all duration-300 hover:border-gold/50 hover:bg-zinc-800/60 hover:shadow-[0_0_20px_rgba(163,230,53,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <div className="flex items-center gap-3">
-                                    {/* Avatar */}
-                                    <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-background text-xs font-bold">
-                                        {loading.personaId === persona.id ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            persona.initials
-                                        )}
-                                    </div>
-                                    {/* Name */}
-                                    <span className="text-sm text-foreground font-medium">
-                                        {persona.name}
+                                <div className="w-8 h-8 shrink-0 rounded-full bg-gold flex items-center justify-center text-background text-xs font-black shadow-[0_0_10px_rgba(163,230,53,0.3)]">
+                                    {loading.personaId === persona.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        persona.initials
+                                    )}
+                                </div>
+                                <div className="flex flex-col items-start min-w-0">
+                                    <span className="text-[12px] font-bold text-white tracking-tight truncate w-full">
+                                        {persona.name.split(' ')[0]}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-gold uppercase tracking-tighter opacity-80 truncate w-full">
+                                        {persona.role}
                                     </span>
                                 </div>
-                                {/* Role Label */}
-                                <span className="text-xs text-muted-foreground group-hover:text-gold transition-colors">
-                                    {persona.role}
-                                </span>
                             </button>
                         ))}
                     </div>

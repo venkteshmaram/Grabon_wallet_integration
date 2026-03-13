@@ -24,6 +24,7 @@ import {
     ChevronUp,
     User,
     Check,
+    Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Persona, DEFAULT_PERSONAS } from '@/types/layout';
@@ -70,10 +71,21 @@ interface SidebarProps {
  */
 const Logo = React.memo(function Logo() {
     return (
-        <div className="flex items-center gap-2 px-4 py-6">
-            <div className="flex flex-col">
-                <span className="text-xl font-bold text-[var(--gold)]">GrabCash</span>
-                <span className="text-sm font-normal text-[var(--text-primary)]">Wallet</span>
+        <div className="flex flex-col gap-1 px-6 py-6 transition-all duration-300">
+            <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="Grabcash" className="w-8 h-8 object-contain" />
+                <div className="flex items-center gap-1">
+                    <span className="text-xl font-bold text-gold">Grab</span>
+                    <span className="text-xl font-bold text-white">Cash</span>
+                </div>
+            </div>
+            <div className="flex items-center gap-1.5 px-0.5">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest whitespace-nowrap">
+                    Powered by
+                </span>
+                <span className="text-[10px] font-black text-gold uppercase tracking-widest">
+                    Poonawalla Pay
+                </span>
             </div>
         </div>
     );
@@ -94,17 +106,24 @@ const NavigationItem = React.memo(function NavigationItem({ item, isActive }: Na
         <Link
             href={item.href}
             className={cn(
-                'group flex items-center gap-3 px-4 py-3 mx-2 rounded-lg',
-                'transition-colors-fast no-underline',
+                'group flex items-center gap-3 px-4 py-3 mx-3 rounded-2xl transition-all duration-300 no-underline relative overflow-hidden',
                 isActive
-                    ? 'bg-[rgba(245,166,35,0.12)] border-l-[3px] border-[#F5A623] text-[#F5A623]'
-                    : 'border-l-[3px] border-transparent text-[#A0A0A0] hover:bg-[#2A2A2A] hover:text-[#F8F8F8]'
+                    ? 'bg-gold/10 text-gold shadow-[0_0_20px_rgba(163,230,53,0.1)]'
+                    : 'text-zinc-500 hover:bg-zinc-900/50 hover:text-white'
             )}
         >
-            <Icon className="w-5 h-5" />
-            <span className="text-sm font-medium">
+            <div className={cn(
+                "p-2 rounded-xl transition-all duration-300",
+                isActive ? "bg-gold text-black shadow-[0_0_15px_rgba(163,230,53,0.4)] scale-110" : "bg-zinc-900/50 text-zinc-500 group-hover:text-white"
+            )}>
+                <Icon className="w-4 h-4" />
+            </div>
+            <span className="text-sm font-black tracking-tight uppercase">
                 {item.label}
             </span>
+            {isActive && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_10px_rgba(163,230,53,0.8)]" />
+            )}
         </Link>
     );
 });
@@ -128,37 +147,37 @@ const PersonaSwitcher = React.memo(function PersonaSwitcher({
     onSelect,
 }: PersonaSwitcherProps) {
     return (
-        <div className="relative">
+        <div className="relative px-3">
             <button
                 onClick={onToggle}
                 className={cn(
-                    'w-full flex items-center justify-between px-4 py-3 mx-2 rounded-lg',
-                    'border border-[var(--bg-border)]',
-                    'transition-colors-fast',
-                    'hover:border-[var(--gold-border)] hover:bg-[var(--gold-subtle)]',
-                    'focus-ring'
+                    'w-full flex items-center justify-between px-3 py-3 rounded-2xl',
+                    'bg-zinc-900/60 border border-zinc-800/50 backdrop-blur-md',
+                    'transition-all duration-300',
+                    'hover:border-gold/40 hover:bg-zinc-900',
+                    'focus:ring-1 focus:ring-gold/50 shadow-lg'
                 )}
                 aria-expanded={isOpen}
                 aria-haspopup="listbox"
             >
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[var(--gold)] flex items-center justify-center">
-                        <span className="text-sm font-bold text-[var(--text-inverse)]">
+                    <div className="w-9 h-9 rounded-full bg-gold flex items-center justify-center shadow-[0_0_15px_rgba(163,230,53,0.2)]">
+                        <span className="text-xs font-black text-black">
                             {activePersona?.initials || '?'}
                         </span>
                     </div>
                     <div className="flex flex-col items-start">
-                        <span className="text-sm font-medium text-[var(--text-primary)]">
+                        <span className="text-sm font-bold text-white tracking-tight leading-none mb-1">
                             {activePersona?.name || 'Select Persona'}
                         </span>
-                        <span className="text-xs text-[var(--text-secondary)]">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                             {activePersona?.role || 'Demo User'}
                         </span>
                     </div>
                 </div>
                 <ChevronUp
                     className={cn(
-                        'w-4 h-4 text-[var(--text-secondary)] transition-transform duration-200',
+                        'w-4 h-4 text-zinc-600 transition-transform duration-300',
                         isOpen ? 'rotate-180' : 'rotate-0'
                     )}
                 />
@@ -220,19 +239,21 @@ interface LogoutButtonProps {
 
 const LogoutButton = React.memo(function LogoutButton({ onLogout }: LogoutButtonProps) {
     return (
-        <button
-            onClick={onLogout}
-            className={cn(
-                'w-full flex items-center gap-3 px-4 py-3 mx-2 rounded-lg',
-                'text-[var(--text-secondary)]',
-                'transition-colors-fast',
-                'hover:text-[var(--red)] hover:bg-[var(--red-muted)]',
-                'focus-ring'
-            )}
-        >
-            <LogOut className="w-5 h-5" />
-            <span className="text-sm font-medium">Logout</span>
-        </button>
+        <div className="px-3">
+            <button
+                onClick={onLogout}
+                className={cn(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl',
+                    'text-zinc-500 font-bold text-sm tracking-tight',
+                    'transition-all duration-200',
+                    'hover:text-red hover:bg-red/5',
+                    'focus:ring-1 focus:ring-red/50'
+                )}
+            >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+            </button>
+        </div>
     );
 });
 
@@ -246,7 +267,7 @@ const LogoutButton = React.memo(function LogoutButton({ onLogout }: LogoutButton
  * Features:
  * - Fixed 260px width on desktop
  * - Dark charcoal background with gold accents
- * - Active state indicator (gold left border)
+ * - Active state indicator (gold dot next to label)
  * - Persona switcher with dropdown
  * - Logout button
  * 
@@ -295,10 +316,10 @@ export function Sidebar({
     return (
         <aside
             className={cn(
-                'fixed left-0 top-0 bottom-0 z-40',
+                'sticky top-0 z-40 flex-shrink-0',
                 'w-[var(--sidebar-width)]',
-                'bg-[#242424] border-r border-[#2E2E2E]',
-                'hidden md:flex flex-col',
+                'bg-[rgba(10,10,10,0.8)] backdrop-blur-2xl border-r border-zinc-800/30',
+                'hidden md:flex flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]',
                 className
             )}
         >

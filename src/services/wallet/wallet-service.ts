@@ -4,7 +4,6 @@
 // ============================================
 
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
 import {
     ERROR_CODES,
     paisaToRupees,
@@ -22,8 +21,8 @@ import {
     LedgerStatus,
 } from './wallet-types';
 
-// Transaction type alias for type safety
-type TransactionClient = Prisma.TransactionClient;
+// Transaction type alias (use any for flexibility in Next.js environment)
+type TransactionClient = any;
 
 // ============================================
 // BALANCE OPERATIONS
@@ -256,7 +255,7 @@ export async function spendBalance(
                 tx.ledgerEntry.create({
                     data: {
                         userId: input.userId,
-                        type: 'PAYU_SPEND',
+                        type: input.type || 'PAYU_SPEND',
                         direction: 'DEBIT',
                         amount: input.amountPaisa,
                         balanceAfter: newAvailableBalance,
@@ -285,14 +284,13 @@ export async function spendBalance(
     }
 }
 
-// ============================================
-// FD LOCK OPERATIONS
-// ============================================
-
 /**
- * Locks funds from available to locked when creating an FD
+ * Records a payment made via an external gateway (like PayU)
+ * Does NOT deduct from the wallet balance.
  */
-export async function lockForFD(input: FDLockInput): Promise<LedgerEntryResponse> {
+export async function recordExternalPayment(
+    input: SpendBalanceInput
+): Promise<LedgerEntryResponse> {
     validateAmount(input.amountPaisa);
 
     try {
@@ -308,39 +306,112 @@ export async function lockForFD(input: FDLockInput): Promise<LedgerEntryResponse
                 );
             }
 
-            if (wallet.availableBalance < input.amountPaisa) {
-                throw new WalletError(
-                    'Insufficient available balance for FD',
-                    ERROR_CODES.INSUFFICIENT_BALANCE
-                );
-            }
-
-            const newAvailableBalance = wallet.availableBalance - input.amountPaisa;
-            const newLockedBalance = wallet.lockedBalance + input.amountPaisa;
-
-            const [ledgerEntry, _updatedWallet] = await Promise.all([
-                tx.ledgerEntry.create({
-                    data: {
-                        userId: input.userId,
-                        type: 'FD_LOCK',
-                        direction: 'DEBIT',
-                        amount: input.amountPaisa,
-                        balanceAfter: newAvailableBalance,
-                        status: 'SETTLED',
-                        fdId: input.fdId,
-                        description: `Locked for FD: ${input.fdId}`,
-                    },
-                }),
-                tx.wallet.update({
-                    where: { userId: input.userId },
-                    data: {
-                        availableBalance: newAvailableBalance,
-                        lockedBalance: newLockedBalance,
-                    },
-                }),
-            ]);
+            // Record the transaction but don't change the balance
+            const ledgerEntry = await tx.ledgerEntry.create({
+                data: {
+                    userId: input.userId,
+                    type: input.type || 'PAYU_EXTERNAL',
+                    direction: 'DEBIT',
+                    amount: input.amountPaisa,
+                    balanceAfter: wallet.availableBalance, // Balance remains same
+                    status: 'SETTLED',
+                    merchantId: input.merchantId,
+                    merchantName: input.merchantName,
+                    description: input.description,
+                },
+            });
 
             return ledgerEntry;
+        });
+
+        return mapLedgerEntryToResponse(result);
+    } catch (error) {
+        if (error instanceof WalletError) throw error;
+        throw new WalletError(
+            'Failed to record external payment',
+            ERROR_CODES.TRANSACTION_FAILED
+        );
+    }
+}
+
+/**
+ * Integrated Merchant Payment: Spends balance AND calculates/credits cashback
+ */
+export async function processMerchantPayment(input: {
+    userId: string;
+    amountPaisa: number;
+    merchantId: string;
+    merchantName: string;
+    description: string;
+    type?: LedgerType;
+}): Promise<{ ledgerEntry: LedgerEntryResponse; reward?: LedgerEntryResponse }> {
+    // 1. Spend the balance
+    const spendEntry = await spendBalance({
+        userId: input.userId,
+        amountPaisa: input.amountPaisa,
+        merchantId: input.merchantId,
+        merchantName: input.merchantName,
+        description: input.description,
+        type: input.type,
+    });
+
+    // 2. Fetch merchant for cashback rate and category
+    const merchant = await prisma.merchant.findUnique({
+        where: { id: input.merchantId }
+    });
+
+    const rate = merchant?.cashbackRate ?? 5.0; 
+    const cashbackAmount = Math.round(input.amountPaisa * (rate / 100));
+
+    let rewardEntry: LedgerEntryResponse | undefined;
+
+    // Only award cashback on real cash spends (not on reward spends)
+    if (cashbackAmount > 0 && input.type !== 'REWARD_SPEND') {
+        // 3. Credit cashback
+        rewardEntry = await creditCashback({
+            userId: input.userId,
+            amountPaisa: cashbackAmount,
+            merchantId: input.merchantId,
+            merchantName: input.merchantName,
+            category: merchant?.category || 'Reward',
+            description: `${rate}% Cashback for purchase at ${input.merchantName}`,
+        });
+
+        // 4. Settle immediately if Food (Demo requirement)
+        if (merchant?.category === 'Food') {
+            await settlePendingEntry(rewardEntry.id);
+        }
+    }
+
+    return { 
+        ledgerEntry: spendEntry, 
+        reward: rewardEntry 
+    };
+}
+
+// ============================================
+// FD LOCK OPERATIONS
+// ============================================
+
+/**
+ * Locks funds from available to locked when creating an FD
+ */
+export async function lockForFD(
+    input: FDLockInput,
+    txClient?: TransactionClient
+): Promise<LedgerEntryResponse> {
+    validateAmount(input.amountPaisa);
+
+    const executor = txClient || prisma;
+
+    try {
+        // If within a transaction already, don't start a new one
+        if (txClient) {
+            return await executeLock(txClient, input);
+        }
+
+        const result = await (executor as any).$transaction(async (tx: TransactionClient) => {
+            return await executeLock(tx, input);
         });
 
         return mapLedgerEntryToResponse(result);
@@ -354,11 +425,62 @@ export async function lockForFD(input: FDLockInput): Promise<LedgerEntryResponse
 }
 
 /**
+ * Internal helper for lock logic to support both transaction and non-transaction calls
+ */
+async function executeLock(tx: TransactionClient, input: FDLockInput) {
+    const wallet = await tx.wallet.findUnique({
+        where: { userId: input.userId },
+    });
+
+    if (!wallet) {
+        throw new WalletError(
+            'Wallet not found',
+            ERROR_CODES.WALLET_NOT_FOUND
+        );
+    }
+
+    if (wallet.availableBalance < input.amountPaisa) {
+        throw new WalletError(
+            'Insufficient available balance for FD',
+            ERROR_CODES.INSUFFICIENT_BALANCE
+        );
+    }
+
+    const newAvailableBalance = wallet.availableBalance - input.amountPaisa;
+    const newLockedBalance = wallet.lockedBalance + input.amountPaisa;
+
+    const [ledgerEntry, _updatedWallet] = await Promise.all([
+        tx.ledgerEntry.create({
+            data: {
+                userId: input.userId,
+                type: 'FD_LOCK',
+                direction: 'DEBIT',
+                amount: input.amountPaisa,
+                balanceAfter: newAvailableBalance,
+                status: 'SETTLED',
+                fdId: input.fdId,
+                description: `Locked for FD: ${input.fdId}`,
+            },
+        }),
+        tx.wallet.update({
+            where: { userId: input.userId },
+            data: {
+                availableBalance: newAvailableBalance,
+                lockedBalance: newLockedBalance,
+            },
+        }),
+    ]);
+
+    return ledgerEntry;
+}
+
+/**
  * Unlocks funds from FD back to available on maturity
  * Creates two entries: FD_UNLOCK (principal) and FD_INTEREST
  */
 export async function unlockFromFD(
-    input: FDUnlockInput
+    input: FDUnlockInput,
+    txClient?: TransactionClient
 ): Promise<{
     unlockEntry: LedgerEntryResponse;
     interestEntry: LedgerEntryResponse;
@@ -366,67 +488,20 @@ export async function unlockFromFD(
     validateAmount(input.principalPaisa);
     validateAmount(input.interestPaisa);
 
+    const executor = txClient || prisma;
+
     try {
-        const result = await prisma.$transaction(async (tx: TransactionClient) => {
-            const wallet = await tx.wallet.findUnique({
-                where: { userId: input.userId },
-            });
+        // If within a transaction already
+        if (txClient) {
+            const results = await executeUnlock(txClient, input);
+            return {
+                unlockEntry: mapLedgerEntryToResponse(results.unlockEntry),
+                interestEntry: mapLedgerEntryToResponse(results.interestEntry),
+            };
+        }
 
-            if (!wallet) {
-                throw new WalletError(
-                    'Wallet not found',
-                    ERROR_CODES.WALLET_NOT_FOUND
-                );
-            }
-
-            if (wallet.lockedBalance < input.principalPaisa) {
-                throw new WalletError(
-                    'Locked balance less than principal',
-                    ERROR_CODES.INSUFFICIENT_BALANCE
-                );
-            }
-
-            const totalReturn = input.principalPaisa + input.interestPaisa;
-            const newLockedBalance = wallet.lockedBalance - input.principalPaisa;
-            const newAvailableBalance = wallet.availableBalance + totalReturn;
-            const newLifetimeEarned = wallet.lifetimeEarned + input.interestPaisa;
-
-            const [unlockEntry, interestEntry, _updatedWallet] = await Promise.all([
-                tx.ledgerEntry.create({
-                    data: {
-                        userId: input.userId,
-                        type: 'FD_UNLOCK',
-                        direction: 'CREDIT',
-                        amount: input.principalPaisa,
-                        balanceAfter: newAvailableBalance - input.interestPaisa,
-                        status: 'SETTLED',
-                        fdId: input.fdId,
-                        description: `FD principal unlocked: ${input.fdId}`,
-                    },
-                }),
-                tx.ledgerEntry.create({
-                    data: {
-                        userId: input.userId,
-                        type: 'FD_INTEREST',
-                        direction: 'CREDIT',
-                        amount: input.interestPaisa,
-                        balanceAfter: newAvailableBalance,
-                        status: 'SETTLED',
-                        fdId: input.fdId,
-                        description: `FD interest earned: ${input.fdId}`,
-                    },
-                }),
-                tx.wallet.update({
-                    where: { userId: input.userId },
-                    data: {
-                        lockedBalance: newLockedBalance,
-                        availableBalance: newAvailableBalance,
-                        lifetimeEarned: newLifetimeEarned,
-                    },
-                }),
-            ]);
-
-            return { unlockEntry, interestEntry };
+        const result = await (executor as any).$transaction(async (tx: TransactionClient) => {
+            return await executeUnlock(tx, input);
         });
 
         return {
@@ -440,6 +515,71 @@ export async function unlockFromFD(
             ERROR_CODES.TRANSACTION_FAILED
         );
     }
+}
+
+/**
+ * Internal helper for unlock logic
+ */
+async function executeUnlock(tx: TransactionClient, input: FDUnlockInput) {
+    const wallet = await tx.wallet.findUnique({
+        where: { userId: input.userId },
+    });
+
+    if (!wallet) {
+        throw new WalletError(
+            'Wallet not found',
+            ERROR_CODES.WALLET_NOT_FOUND
+        );
+    }
+
+    if (wallet.lockedBalance < input.principalPaisa) {
+        throw new WalletError(
+            'Locked balance less than principal',
+            ERROR_CODES.INSUFFICIENT_BALANCE
+        );
+    }
+
+    const totalReturn = input.principalPaisa + input.interestPaisa;
+    const newLockedBalance = wallet.lockedBalance - input.principalPaisa;
+    const newAvailableBalance = wallet.availableBalance + totalReturn;
+    const newLifetimeEarned = wallet.lifetimeEarned + input.interestPaisa;
+
+    const [unlockEntry, interestEntry, _updatedWallet] = await Promise.all([
+        tx.ledgerEntry.create({
+            data: {
+                userId: input.userId,
+                type: 'FD_UNLOCK',
+                direction: 'CREDIT',
+                amount: input.principalPaisa,
+                balanceAfter: newAvailableBalance - input.interestPaisa,
+                status: 'SETTLED',
+                fdId: input.fdId,
+                description: `FD principal unlocked: ${input.fdId}`,
+            },
+        }),
+        tx.ledgerEntry.create({
+            data: {
+                userId: input.userId,
+                type: 'FD_INTEREST',
+                direction: 'CREDIT',
+                amount: input.interestPaisa,
+                balanceAfter: newAvailableBalance,
+                status: 'SETTLED',
+                fdId: input.fdId,
+                description: `FD interest earned: ${input.fdId}`,
+            },
+        }),
+        tx.wallet.update({
+            where: { userId: input.userId },
+            data: {
+                lockedBalance: newLockedBalance,
+                availableBalance: newAvailableBalance,
+                lifetimeEarned: newLifetimeEarned,
+            },
+        }),
+    ]);
+
+    return { unlockEntry, interestEntry };
 }
 
 // ============================================

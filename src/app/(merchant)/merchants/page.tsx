@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiGet } from '@/lib/api-client';
-import { Store, QrCode, ArrowRight } from 'lucide-react';
+import { Store, ArrowRight } from 'lucide-react';
 
 // ============================================
 // TYPES
@@ -31,11 +31,11 @@ interface MerchantsApiResponse {
 // ============================================
 
 const CATEGORY_COLORS: Record<string, string> = {
-    Food: '#F5A623',
-    Shopping: '#22C55E',
-    Travel: '#38BDF8',
-    Entertainment: '#94A3B8',
-    default: '#F5A623',
+    Food: 'var(--orange)',
+    Shopping: 'var(--green)',
+    Travel: 'var(--blue)',
+    Entertainment: 'var(--slate)',
+    default: 'var(--gold)',
 };
 
 // ============================================
@@ -74,54 +74,79 @@ function MerchantCard({ merchant, onClick }: MerchantCardProps): React.ReactElem
     return (
         <button
             onClick={onClick}
-            className="w-full text-left rounded-xl border transition-all-fast group"
+            className="w-full text-left rounded-[2rem] border transition-all duration-500 group relative overflow-hidden h-[220px]"
             style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--bg-border)',
+                backgroundColor: 'rgba(15, 15, 15, 0.4)',
+                borderColor: 'rgba(255, 255, 255, 0.05)',
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'var(--gold)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.transform = 'scale(1.02)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--bg-border)';
-                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                e.currentTarget.style.transform = 'scale(1)';
             }}
         >
-            <div className="p-5">
-                {/* Top Section: Icon + Category */}
-                <div className="flex items-start justify-between mb-4">
-                    <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            {/* Background Content (Logo or Initials) */}
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center p-8 transition-transform duration-700 group-hover:scale-110">
+                {merchant.logoUrl ? (
+                    <img 
+                        src={merchant.logoUrl} 
+                        alt={merchant.name} 
+                        className="w-full h-full object-contain filter drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                    />
+                ) : (
+                    <div 
+                        className="w-24 h-24 rounded-full flex items-center justify-center text-white font-black text-4xl opacity-10"
                         style={{ backgroundColor: categoryColor }}
                     >
                         {initials}
                     </div>
-                    <span
-                        className="text-xs px-2 py-1 rounded-full"
-                        style={{
-                            backgroundColor: 'var(--bg-primary)',
-                            color: 'var(--text-secondary)',
-                        }}
-                    >
-                        {merchant.category}
-                    </span>
+                )}
+            </div>
+
+            {/* Premium Overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            {/* Category Tag (Top Right) */}
+            <div className="absolute top-4 right-4">
+                <span
+                    className="text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-[0.2em] backdrop-blur-md border border-white/5"
+                    style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        color: 'white',
+                    }}
+                >
+                    {merchant.category}
+                </span>
+            </div>
+
+            {/* Bottom Content Area */}
+            <div className="absolute bottom-0 left-0 right-0 p-5 space-y-1 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                <div className="space-y-0">
+                    <h3 className="text-xl font-black text-white tracking-tighter leading-none">
+                        {merchant.name}
+                    </h3>
                 </div>
+                
+                <div className="flex items-end justify-between">
+                    <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                             <div className="h-1 w-6 bg-gold rounded-full" />
+                             <span className="text-[10px] font-black text-gold uppercase tracking-widest">
+                                Cashback
+                             </span>
+                        </div>
+                        <p className="text-2xl font-black text-white tracking-tight">
+                            {merchant.cashbackRate}%
+                        </p>
+                    </div>
 
-                {/* Merchant Name */}
-                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">
-                    {merchant.name}
-                </h3>
-
-                {/* Cashback Rate */}
-                <p className="text-sm font-semibold mb-4" style={{ color: 'var(--gold)' }}>
-                    Up to {merchant.cashbackRate}% cashback
-                </p>
-
-                {/* Pay Now Link */}
-                <div className="flex items-center gap-1 text-sm font-medium" style={{ color: 'var(--gold)' }}>
-                    <span>Pay Now</span>
-                    <ArrowRight className="w-4 h-4 transition-transform-fast group-hover:translate-x-1" />
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-white uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-3 group-hover:translate-x-0">
+                        <span>Checkout</span>
+                        <ArrowRight className="w-3 h-3 text-gold" />
+                    </div>
                 </div>
             </div>
         </button>
@@ -241,29 +266,27 @@ export default function MerchantsPage(): React.ReactElement {
         router.push(`/merchants/${merchantId}`);
     }, [router]);
 
-    // Handle QR pay navigation
-    const handleQRPay = useCallback(() => {
-        router.push('/qr-pay');
-    }, [router]);
-
     return (
         <div className="mx-auto max-w-[1200px] pb-8">
             {/* Page Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
+            <div className="mb-10 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 mb-2">
                     <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(163,230,53,0.3)] mb-2 sm:mb-0"
                         style={{ backgroundColor: 'var(--gold-muted)' }}
                     >
-                        <Store className="w-5 h-5" style={{ color: 'var(--gold)' }} />
+                        <Store className="w-7 h-7" style={{ color: 'var(--gold)' }} />
                     </div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-                        Partner Merchants
-                    </h1>
+                    <div>
+                        <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">
+                            Partner Merchants
+                        </h1>
+                        <div className="h-1 w-20 bg-gold rounded-full my-2 shadow-[0_0_15px_rgba(163,230,53,0.5)] mx-auto sm:mx-0" />
+                        <p className="text-[var(--text-secondary)]">
+                            Shop at our partner stores and earn cashback
+                        </p>
+                    </div>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)]">
-                    Shop at our partner stores and earn cashback
-                </p>
             </div>
 
             {/* Merchants Grid */}
@@ -289,28 +312,6 @@ export default function MerchantsPage(): React.ReactElement {
                 </div>
             )}
 
-            {/* QR Pay Button */}
-            <div className="mt-8 flex justify-center">
-                <button
-                    onClick={handleQRPay}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all-fast"
-                    style={{
-                        backgroundColor: 'var(--gold)',
-                        color: 'var(--text-inverse)',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--gold-hover)';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--gold)';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                >
-                    <QrCode className="w-5 h-5" />
-                    Scan QR to Pay
-                </button>
-            </div>
         </div>
     );
 }

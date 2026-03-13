@@ -371,10 +371,10 @@ export function AdvisorCard({
 
     return (
         <div
-            className="w-full rounded-[var(--radius-lg)] p-6"
+            className="w-full rounded-2xl p-8 backdrop-blur-xl border border-zinc-800/50"
             style={{
-                backgroundColor: 'var(--bg-card)',
-                borderLeft: '4px solid var(--gold)',
+                backgroundColor: 'rgba(15, 15, 15, 0.5)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
             }}
         >
             {/* Header Row */}
@@ -410,14 +410,14 @@ export function AdvisorCard({
             {/* Recommendation Section */}
             {advisor.recommendation && (
                 <div
-                    className="mb-6 p-4 rounded-[var(--radius-md)]"
+                    className="mb-6 p-5 rounded-xl border border-gold/10 relative overflow-hidden group"
                     style={{
-                        backgroundColor: 'var(--gold-muted)',
+                        backgroundColor: 'rgba(163, 230, 53, 0.03)',
                     }}
                 >
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gold/50 shadow-[0_0_15px_rgba(163,230,53,0.3)]" />
                     <p
-                        className="text-sm leading-relaxed"
-                        style={{ color: 'var(--text-primary)' }}
+                        className="text-sm leading-relaxed text-zinc-300 italic"
                     >
                         {parseSummaryText(advisor.recommendation)}
                     </p>

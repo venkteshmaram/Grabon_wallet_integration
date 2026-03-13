@@ -185,6 +185,11 @@ interface AnalyticsApiResponse {
 // WALLET STORE STATE
 // ============================================
 
+interface LoadingStatus {
+    loading: boolean;
+    error: string | null;
+}
+
 interface WalletState {
     // State
     currentUser: CurrentUser | null;
@@ -193,8 +198,15 @@ interface WalletState {
     fds: FDRecord[] | null;
     advisor: AdvisorRecommendation | null;
     analytics: WalletAnalytics | null;
-    isLoading: boolean;
-    error: string | null;
+
+    // Status tracking per domain
+    status: {
+        wallet: LoadingStatus;
+        ledger: LoadingStatus;
+        fds: LoadingStatus;
+        advisor: LoadingStatus;
+        analytics: LoadingStatus;
+    };
 
     // Actions
     setUser: (user: CurrentUser) => void;
@@ -218,7 +230,6 @@ function convertPaisaToRupees(paisa: number): number {
 }
 
 function convertWalletFromPaisa(walletData: Wallet): Wallet {
-    // API already returns both paisa and rupees values, just pass through
     return walletData;
 }
 
@@ -235,12 +246,14 @@ function convertFDFromPaisa(fd: FDsApiResponse['data']['portfolio']['fds'][numbe
     const maturityAmountRupees = fd.maturityAmountRupees ?? (typeof fd.maturityAmount === 'number' ? convertPaisaToRupees(fd.maturityAmount) : 0);
     const interestEarnedRupees = fd.interestEarnedRupees ?? (typeof fd.interestEarned === 'number' ? convertPaisaToRupees(fd.interestEarned) : 0);
     const accruedInterestRupees = fd.accruedInterestRupees ?? (typeof fd.accruedInterest === 'number' ? convertPaisaToRupees(fd.accruedInterest) : 0);
+
     const penaltyAmountRupees =
         typeof fd.penaltyAmountRupees === 'number'
             ? fd.penaltyAmountRupees
             : typeof fd.penaltyAmount === 'number'
                 ? convertPaisaToRupees(fd.penaltyAmount)
                 : null;
+
     const actualReturnRupees =
         typeof fd.actualReturnRupees === 'number'
             ? fd.actualReturnRupees
@@ -267,14 +280,16 @@ function convertFDFromPaisa(fd: FDsApiResponse['data']['portfolio']['fds'][numbe
 }
 
 function convertAnalyticsFromPaisa(analytics: WalletAnalytics): WalletAnalytics {
-    return analytics; // Service already returns both paisa and rupees
+    return analytics;
 }
 
 // ============================================
 // STORE IMPLEMENTATION
 // ============================================
 
-export const useWalletStore = create<WalletState>()((set) => ({
+const initialStatus: LoadingStatus = { loading: false, error: null };
+
+export const useWalletStore = create<WalletState>()((set, get) => ({
     // Initial State
     currentUser: null,
     wallet: null,
@@ -282,8 +297,14 @@ export const useWalletStore = create<WalletState>()((set) => ({
     fds: null,
     advisor: null,
     analytics: null,
-    isLoading: false,
-    error: null,
+
+    status: {
+        wallet: initialStatus,
+        ledger: initialStatus,
+        fds: initialStatus,
+        advisor: initialStatus,
+        analytics: initialStatus,
+    },
 
     // ============================================
     // SET USER
@@ -296,18 +317,28 @@ export const useWalletStore = create<WalletState>()((set) => ({
     // FETCH WALLET BALANCE
     // ============================================
     fetchWallet: async (userId: string) => {
+        set(state => ({ status: { ...state.status, wallet: { loading: true, error: null } } }));
         try {
+            console.log(`[WalletStore] Fetching wallet for ${userId}...`);
             const response = await apiGet<WalletApiResponse>(`/api/wallet/${userId}`);
+            console.log(`[WalletStore] Wallet response:`, response);
 
             if (response.data) {
-                set({
+                set(state => ({
                     wallet: convertWalletFromPaisa(response.data),
-                    error: null,
-                });
+                    status: { ...state.status, wallet: { loading: false, error: null } }
+                }));
+            } else {
+                set(state => ({
+                    status: { ...state.status, wallet: { loading: false, error: 'No wallet data returned' } }
+                }));
             }
         } catch (err) {
+            console.error(`[WalletStore] Fetch wallet error:`, err);
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch wallet';
-            set({ error: errorMessage });
+            set(state => ({
+                status: { ...state.status, wallet: { loading: false, error: errorMessage } }
+            }));
         }
     },
 
@@ -315,6 +346,7 @@ export const useWalletStore = create<WalletState>()((set) => ({
     // FETCH LEDGER
     // ============================================
     fetchLedger: async (userId: string, filters?: LedgerFilters) => {
+        set(state => ({ status: { ...state.status, ledger: { loading: true, error: null } } }));
         try {
             const queryParams = filters
                 ? '?' + new URLSearchParams(
@@ -327,14 +359,21 @@ export const useWalletStore = create<WalletState>()((set) => ({
             const response = await apiGet<LedgerApiResponse>(`/api/wallet/${userId}/ledger${queryParams}`);
 
             if (response.data?.entries) {
-                set({
+                set(state => ({
                     ledger: response.data.entries.map(convertLedgerEntryFromPaisa),
-                    error: null,
-                });
+                    status: { ...state.status, ledger: { loading: false, error: null } }
+                }));
+            } else {
+                set(state => ({
+                    status: { ...state.status, ledger: { loading: false, error: 'No ledger data returned' } }
+                }));
             }
         } catch (err) {
+            console.error(`[WalletStore] Fetch ledger error:`, err);
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch ledger';
-            set({ error: errorMessage });
+            set(state => ({
+                status: { ...state.status, ledger: { loading: false, error: errorMessage } }
+            }));
         }
     },
 
@@ -342,18 +381,26 @@ export const useWalletStore = create<WalletState>()((set) => ({
     // FETCH FDs
     // ============================================
     fetchFDs: async (userId: string) => {
+        set(state => ({ status: { ...state.status, fds: { loading: true, error: null } } }));
         try {
             const response = await apiGet<FDsApiResponse>(`/api/fd/user/${userId}`);
 
             if (response.data?.portfolio?.fds) {
-                set({
+                set(state => ({
                     fds: response.data.portfolio.fds.map(convertFDFromPaisa),
-                    error: null,
-                });
+                    status: { ...state.status, fds: { loading: false, error: null } }
+                }));
+            } else {
+                set(state => ({
+                    status: { ...state.status, fds: { loading: false, error: 'No FD data returned' } }
+                }));
             }
         } catch (err) {
+            console.error(`[WalletStore] Fetch FDs error:`, err);
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch FDs';
-            set({ error: errorMessage });
+            set(state => ({
+                status: { ...state.status, fds: { loading: false, error: errorMessage } }
+            }));
         }
     },
 
@@ -361,16 +408,19 @@ export const useWalletStore = create<WalletState>()((set) => ({
     // FETCH ADVISOR
     // ============================================
     fetchAdvisor: async (userId: string) => {
+        set(state => ({ status: { ...state.status, advisor: { loading: true, error: null } } }));
         try {
             const response = await apiGet<AdvisorApiResponse>(`/api/advisor/${userId}`);
-
-            set({
+            set(state => ({
                 advisor: response.data,
-                error: null,
-            });
+                status: { ...state.status, advisor: { loading: false, error: null } }
+            }));
         } catch (err) {
-            // Advisor may be null for new users - don't set error
-            set({ advisor: null });
+            console.warn(`[WalletStore] Fetch advisor error (might be new user):`, err);
+            set(state => ({
+                advisor: null,
+                status: { ...state.status, advisor: { loading: false, error: null } } // Don't block UI for advisor failure
+            }));
         }
     },
 
@@ -378,18 +428,28 @@ export const useWalletStore = create<WalletState>()((set) => ({
     // FETCH ANALYTICS
     // ============================================
     fetchAnalytics: async (userId: string) => {
+        set(state => ({ status: { ...state.status, analytics: { loading: true, error: null } } }));
         try {
+            console.log(`[WalletStore] Fetching analytics for ${userId}...`);
             const response = await apiGet<AnalyticsApiResponse>(`/api/wallet/${userId}/analytics`);
+            console.log(`[WalletStore] Analytics response:`, response);
 
             if (response.data) {
-                set({
+                set(state => ({
                     analytics: convertAnalyticsFromPaisa(response.data),
-                    error: null,
-                });
+                    status: { ...state.status, analytics: { loading: false, error: null } }
+                }));
+            } else {
+                set(state => ({
+                    status: { ...state.status, analytics: { loading: false, error: 'No analytics data returned' } }
+                }));
             }
         } catch (err) {
+            console.error(`[WalletStore] Fetch analytics error:`, err);
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analytics';
-            set({ error: errorMessage });
+            set(state => ({
+                status: { ...state.status, analytics: { loading: false, error: errorMessage } }
+            }));
         }
     },
 
@@ -397,28 +457,44 @@ export const useWalletStore = create<WalletState>()((set) => ({
     // REFRESH ALL DATA
     // ============================================
     refreshAll: async (userId: string) => {
-        set({ isLoading: true, error: null });
+        if (!userId || userId === 'undefined' || userId === 'null') {
+            console.warn('[WalletStore] Skip refreshAll: Invalid userId', userId);
+            return;
+        }
 
         try {
-            // Fetch all data in parallel
-            const results = await Promise.allSettled([
-                useWalletStore.getState().fetchWallet(userId),
-                useWalletStore.getState().fetchLedger(userId),
-                useWalletStore.getState().fetchFDs(userId),
-                useWalletStore.getState().fetchAdvisor(userId),
-                useWalletStore.getState().fetchAnalytics(userId),
+            console.log(`[WalletStore] Refreshing all data for ${userId}...`);
+
+            // Phase 1: Fetch critical data first (wallet + ledger)
+            // These are needed for the UI to display basic info
+            const criticalResults = await Promise.allSettled([
+                get().fetchWallet(userId),
+                get().fetchLedger(userId),
             ]);
 
-            // Check for any failures
-            const failures = results.filter((r) => r.status === 'rejected');
-            if (failures.length > 0) {
-                console.warn('Some fetches failed:', failures);
+            // Check if critical fetches succeeded
+            const criticalErrors = criticalResults
+                .filter(r => r.status === 'rejected')
+                .map(r => (r as PromiseRejectedResult).reason);
+
+            if (criticalErrors.length > 0) {
+                console.error('[WalletStore] Critical data fetch failed:', criticalErrors);
+                // Continue to try secondary data, but log the error
             }
+
+            // Phase 2: Fetch secondary data with a small delay to prevent DB overload
+            // These can fail gracefully without breaking the UI
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            await Promise.allSettled([
+                get().fetchFDs(userId),
+                get().fetchAdvisor(userId),
+                get().fetchAnalytics(userId),
+            ]);
+
+            console.log(`[WalletStore] Data refresh completed for ${userId}`);
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to refresh data';
-            set({ error: errorMessage });
-        } finally {
-            set({ isLoading: false });
+            console.error('[WalletStore] Data refresh orchestration error:', err);
         }
     },
 
@@ -433,8 +509,13 @@ export const useWalletStore = create<WalletState>()((set) => ({
             fds: null,
             advisor: null,
             analytics: null,
-            isLoading: false,
-            error: null,
+            status: {
+                wallet: initialStatus,
+                ledger: initialStatus,
+                fds: initialStatus,
+                advisor: initialStatus,
+                analytics: initialStatus,
+            },
         });
     },
 }));

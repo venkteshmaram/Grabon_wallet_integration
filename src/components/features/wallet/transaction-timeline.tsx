@@ -90,8 +90,8 @@ function getTransactionIconConfig(entry: LedgerEntry): {
     if (entry.isFlagged) {
         return {
             icon: <AlertTriangle className="w-4 h-4" />,
-            bgColor: 'rgba(249, 115, 22, 0.15)',
-            iconColor: '#F97316',
+            bgColor: 'var(--orange-muted)',
+            iconColor: 'var(--orange)',
         };
     }
 
@@ -104,8 +104,8 @@ function getTransactionIconConfig(entry: LedgerEntry): {
     ) {
         return {
             icon: <ArrowUpRight className="w-4 h-4" />,
-            bgColor: 'rgba(34, 197, 94, 0.15)',
-            iconColor: '#22C55E',
+            bgColor: 'var(--green-muted)',
+            iconColor: 'var(--green)',
         };
     }
 
@@ -113,16 +113,16 @@ function getTransactionIconConfig(entry: LedgerEntry): {
     if (entry.type === 'FD_LOCK') {
         return {
             icon: <Landmark className="w-4 h-4" />,
-            bgColor: 'rgba(56, 189, 248, 0.15)',
-            iconColor: '#38BDF8',
+            bgColor: 'var(--blue-muted)',
+            iconColor: 'var(--blue)',
         };
     }
 
     // Debit transactions (default)
     return {
         icon: <ArrowDownRight className="w-4 h-4" />,
-        bgColor: 'rgba(239, 68, 68, 0.15)',
-        iconColor: '#EF4444',
+        bgColor: 'var(--red-muted)',
+        iconColor: 'var(--red)',
     };
 }
 
@@ -167,31 +167,31 @@ function getStatusBadgeConfig(status: string): {
     switch (status) {
         case 'PENDING':
             return {
-                bgColor: 'rgba(148, 163, 184, 0.15)',
+                bgColor: 'var(--slate-muted)',
                 textColor: 'var(--slate)',
                 label: 'Pending',
             };
         case 'SETTLED':
             return {
-                bgColor: 'rgba(34, 197, 94, 0.15)',
+                bgColor: 'var(--green-muted)',
                 textColor: 'var(--green)',
                 label: 'Settled',
             };
         case 'HELD':
             return {
-                bgColor: 'rgba(249, 115, 22, 0.15)',
-                textColor: '#F97316',
+                bgColor: 'var(--orange-muted)',
+                textColor: 'var(--orange)',
                 label: 'On Hold',
             };
         case 'FAILED':
             return {
-                bgColor: 'rgba(239, 68, 68, 0.15)',
+                bgColor: 'var(--red-muted)',
                 textColor: 'var(--red)',
                 label: 'Failed',
             };
         default:
             return {
-                bgColor: 'rgba(148, 163, 184, 0.15)',
+                bgColor: 'var(--slate-muted)',
                 textColor: 'var(--slate)',
                 label: status,
             };

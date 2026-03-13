@@ -70,7 +70,7 @@ export default function MerchantLayout({ children }: MerchantLayoutProps) {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)]">
+        <div className="flex h-full overflow-hidden bg-[var(--bg-primary)]">
             {/* Sidebar - Desktop Only */}
             <Sidebar
                 activePersona={activePersona}
@@ -78,18 +78,27 @@ export default function MerchantLayout({ children }: MerchantLayoutProps) {
                 onLogout={handleLogout}
             />
 
-            {/* Header - Fixed Top */}
-            <Header activePersona={activePersona} />
+            {/* Right Side Content Column */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                {/* Scrollable Container */}
+                <div className="flex-1 overflow-y-auto scroll-smooth">
+                    {/* Header - Sticky in-flow */}
+                    <Header activePersona={activePersona} />
 
-            {/* Main Content Area */}
-            <main className="lg:ml-[var(--sidebar-width)] pt-[var(--header-height)] pb-[var(--mobile-nav-height)] lg:pb-0 min-h-screen">
-                <div className="p-4 sm:p-6 lg:p-8">
-                    {children}
+                    {/* Main Content Area */}
+                    <main className="pb-[var(--mobile-nav-height)] lg:pb-0">
+                        <div className="px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 pt-0">
+                            {children}
+                        </div>
+                    </main>
                 </div>
-            </main>
+            </div>
 
-            {/* Mobile Navigation - Bottom */}
-            <MobileNav />
+            {/* Mobile Navigation - Mobile Only */}
+            <MobileNav
+                activePersona={activePersona}
+                onPersonaSwitch={handlePersonaSwitch}
+            />
         </div>
     );
 }

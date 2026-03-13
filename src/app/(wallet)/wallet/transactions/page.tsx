@@ -343,11 +343,12 @@ export default function TransactionsPage(): React.ReactElement {
     return (
         <div className="mx-auto max-w-[1200px] pb-8">
             {/* Page Header */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+            <div className="mb-10 text-center sm:text-left">
+                <h1 className="text-4xl font-black text-[var(--text-primary)] mb-2 tracking-tight">
                     Transaction History
                 </h1>
-                <p className="text-sm text-[var(--text-secondary)]">
+                <div className="h-1 w-20 bg-gold rounded-full mb-4 shadow-[0_0_15px_rgba(163,230,53,0.5)] hidden sm:block" />
+                <p className="text-[var(--text-secondary)]">
                     View and filter all your transactions
                 </p>
             </div>
@@ -408,7 +409,7 @@ export default function TransactionsPage(): React.ReactElement {
             </div>
 
             {/* Transaction List */}
-            <div className="rounded-xl border border-[var(--bg-border)] bg-[var(--bg-card)] overflow-hidden">
+            <div className="rounded-2xl border border-zinc-800/50 bg-[rgba(15,15,15,0.7)] backdrop-blur-xl overflow-hidden shadow-2xl">
                 {error ? (
                     <div className="flex flex-col items-center justify-center py-16 px-4">
                         <p className="text-lg font-medium text-[var(--text-primary)] mb-2">

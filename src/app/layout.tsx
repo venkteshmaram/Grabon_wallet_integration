@@ -1,23 +1,5 @@
-/**
- * Root Layout
- * 
- * This is the main layout that wraps all pages.
- * It includes:
- * - Global styles (globals.css)
- * - Metadata configuration
- * - Layout structure with Sidebar, Header, and MobileNav
- * 
- * The layout follows a responsive grid pattern:
- * - Desktop: Fixed sidebar (260px) + Header + Main content
- * - Mobile: Header + Main content + Bottom nav bar
- */
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-
-// ============================================
-// METADATA CONFIGURATION
-// ============================================
 
 export const metadata: Metadata = {
     title: {
@@ -55,10 +37,6 @@ export const viewport: Viewport = {
     userScalable: false,
     themeColor: '#1A1A1A',
 };
-
-// ============================================
-// ROOT LAYOUT
-// ============================================
 
 export default function RootLayout({
     children,

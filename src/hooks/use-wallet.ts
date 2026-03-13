@@ -3,7 +3,7 @@
 // Step 4: API Client + Custom Hooks
 // ============================================
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useWalletStore } from '@/store/wallet-store';
 import type { Wallet } from '@/store/wallet-store';
 
@@ -51,9 +51,13 @@ interface UseWalletReturn {
 export function useWallet(userId: string | undefined): UseWalletReturn {
     // Get state and actions from wallet store
     const wallet = useWalletStore((state) => state.wallet);
-    const isLoading = useWalletStore((state) => state.isLoading);
-    const error = useWalletStore((state) => state.error);
+    const isLoading = useWalletStore((state) => state.status.wallet.loading);
+    const error = useWalletStore((state) => state.status.wallet.error);
     const fetchWallet = useWalletStore((state) => state.fetchWallet);
+
+    // Track if we've attempted a fetch to prevent race conditions
+    const hasAttemptedFetch = useRef(false);
+    const lastUserId = useRef<string | undefined>(undefined);
 
     /**
      * Manual refetch function
@@ -63,6 +67,7 @@ export function useWallet(userId: string | undefined): UseWalletReturn {
         if (!userId) {
             return;
         }
+        hasAttemptedFetch.current = false; // Reset for manual refetch
         await fetchWallet(userId);
     }, [userId, fetchWallet]);
 
@@ -75,12 +80,18 @@ export function useWallet(userId: string | undefined): UseWalletReturn {
             return;
         }
 
-        // Only fetch if wallet data is not already present
-        // This prevents duplicate fetches on re-renders
-        if (!wallet) {
+        // Reset fetch attempt if userId changes
+        if (lastUserId.current !== userId) {
+            hasAttemptedFetch.current = false;
+            lastUserId.current = userId;
+        }
+
+        // Only fetch once per userId session to prevent race conditions
+        if (!hasAttemptedFetch.current) {
+            hasAttemptedFetch.current = true;
             fetchWallet(userId);
         }
-    }, [userId, wallet, fetchWallet]);
+    }, [userId, fetchWallet]);
 
     return {
         wallet,

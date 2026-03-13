@@ -3,7 +3,7 @@
 // Step 4: API Client + Custom Hooks
 // ============================================
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useWalletStore } from '@/store/wallet-store';
 import { apiPost } from '@/lib/api-client';
 import type { AdvisorRecommendation } from '@/store/wallet-store';
@@ -72,13 +72,17 @@ const REFRESH_TIMEOUT_MS = 30000; // 30 seconds
 export function useAdvisor(userId: string | undefined): UseAdvisorReturn {
     // Get state and actions from wallet store
     const advisor = useWalletStore((state) => state.advisor);
-    const isLoading = useWalletStore((state) => state.isLoading);
-    const error = useWalletStore((state) => state.error);
+    const isLoading = useWalletStore((state) => state.status.advisor.loading);
+    const error = useWalletStore((state) => state.status.advisor.error);
     const fetchAdvisor = useWalletStore((state) => state.fetchAdvisor);
 
     // Separate loading state for refresh operation (Claude API call)
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [refreshError, setRefreshError] = useState<string | null>(null);
+
+    // Track if we've attempted a fetch to prevent race conditions
+    const hasAttemptedFetch = useRef(false);
+    const lastUserId = useRef<string | undefined>(undefined);
 
     /**
      * Refresh advisor recommendation
@@ -129,11 +133,18 @@ export function useAdvisor(userId: string | undefined): UseAdvisorReturn {
             return;
         }
 
-        // Only fetch if advisor data is not already present
-        if (!advisor) {
+        // Reset fetch attempt if userId changes
+        if (lastUserId.current !== userId) {
+            hasAttemptedFetch.current = false;
+            lastUserId.current = userId;
+        }
+
+        // Only fetch once per userId session to prevent race conditions
+        if (!hasAttemptedFetch.current) {
+            hasAttemptedFetch.current = true;
             fetchAdvisor(userId);
         }
-    }, [userId, advisor, fetchAdvisor]);
+    }, [userId, fetchAdvisor]);
 
     return {
         advisor,

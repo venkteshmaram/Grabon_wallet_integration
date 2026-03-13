@@ -167,9 +167,9 @@ const NotificationBell = React.memo(function NotificationBell() {
             )}
             aria-label="Notifications"
         >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
             {/* Decorative notification dot */}
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--gold)] rounded-full" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-gold rounded-full shadow-[0_0_8px_rgba(163,230,53,0.8)]" />
         </button>
     );
 });
@@ -298,10 +298,9 @@ export function Header({
     return (
         <header
             className={cn(
-                'fixed top-0 right-0 z-30',
-                'h-[var(--header-height)]',
-                'md:left-[var(--sidebar-width)] left-0',
-                'bg-[var(--bg-card)] border-b border-[var(--bg-border)]',
+                'sticky top-0 z-30 transition-all duration-300',
+                'h-[var(--header-height)] w-full',
+                'bg-[rgba(10,10,10,0.7)] backdrop-blur-xl border-b border-zinc-800/30 shadow-sm',
                 className
             )}
         >

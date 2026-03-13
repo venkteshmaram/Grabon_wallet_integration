@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useWallet } from '@/hooks/use-wallet';
 import { useFdPortfolio } from '@/hooks/use-fd-portfolio';
 import { Landmark, AlertCircle, CheckCircle2, Loader2, ArrowLeft, TrendingUp, Calendar, Percent } from 'lucide-react';
+import { FDPortfolio } from '@/components/features/fd';
 
 // ============================================
 // CONSTANTS
@@ -130,10 +131,9 @@ function AmountInput({ value, onChange, error, maxAmount }: AmountInputProps): R
                 </p>
                 <button
                     onClick={() => onChange(Math.floor(maxAmount).toString())}
+                    type="button"
                     className="text-xs font-medium transition-colors-fast"
                     style={{ color: 'var(--gold)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--gold-hover)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--gold)'; }}
                 >
                     Max
                 </button>
@@ -184,24 +184,8 @@ function TenureSlider({ value, onChange }: TenureSliderProps): React.ReactElemen
 
                 {/* Tick Marks */}
                 <div className="flex justify-between mt-2 px-1">
-                    {TENURE_MARKS.map((mark) => (
-                        <button
-                            key={mark}
-                            onClick={() => onChange(mark)}
-                            className="text-xs font-medium transition-colors-fast"
-                            style={{
-                                color: value === mark ? 'var(--gold)' : 'var(--text-tertiary)',
-                            }}
-                            onMouseEnter={(e) => {
-                                if (value !== mark) e.currentTarget.style.color = 'var(--text-secondary)';
-                            }}
-                            onMouseLeave={(e) => {
-                                if (value !== mark) e.currentTarget.style.color = 'var(--text-tertiary)';
-                            }}
-                        >
-                            {mark === 365 ? '1Y' : `${mark}D`}
-                        </button>
-                    ))}
+                    <span className="text-xs font-medium text-[var(--text-tertiary)]">0D</span>
+                    <span className="text-xs font-medium text-[var(--text-tertiary)]">1Y</span>
                 </div>
             </div>
         </div>
@@ -225,10 +209,9 @@ function LivePreview({ principal, tenureDays }: LivePreviewProps): React.ReactEl
 
     return (
         <div
-            className="rounded-xl p-6 space-y-5"
+            className="rounded-2xl p-6 space-y-5 backdrop-blur-xl border border-zinc-800/50 shadow-xl"
             style={{
-                backgroundColor: 'var(--bg-primary)',
-                border: '1px solid var(--bg-border)',
+                backgroundColor: 'rgba(15, 15, 15, 0.7)',
             }}
         >
             <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -352,8 +335,8 @@ export default function InvestPage(): React.ReactElement {
     // Load wallet data
     const { wallet, isLoading: walletLoading } = useWallet(userId || '');
 
-    // Load FD portfolio actions
-    const { createFD } = useFdPortfolio(userId || '');
+    // Load FD portfolio actions and data
+    const { fds, isLoading: fdsLoading, createFD, breakFD } = useFdPortfolio(userId || '');
 
     const availableBalance = wallet?.availableRupees ?? 0;
     const principalValue = parseFloat(amount) || 0;
@@ -400,17 +383,15 @@ export default function InvestPage(): React.ReactElement {
             if (result) {
                 setCreatedFD({ principal: principalValue, tenureDays });
                 setShowSuccess(true);
-            } else {
-                setError({ general: 'Failed to create FD. Please try again.' });
             }
-        } catch (err) {
-            setError({
-                general: err instanceof Error ? err.message : 'An unexpected error occurred'
-            });
+        } catch (err: any) {
+            console.error('[InvestPage] Create FD error:', err);
+            const errorMessage = err?.message || err?.error?.message || 'Failed to create FD. Please try again.';
+            setError({ general: errorMessage });
         } finally {
             setIsSubmitting(false);
         }
-    }, [isFormValid, userId, principalValue, tenureDays, createFD]);
+    }, [isFormValid, userId, principalValue, tenureDays, createFD, router]);
 
     // Handle success modal close
     const handleSuccessClose = useCallback(() => {
@@ -422,6 +403,11 @@ export default function InvestPage(): React.ReactElement {
     const handleBack = useCallback(() => {
         router.back();
     }, [router]);
+
+    const handleBreakFD = useCallback(async (fdId: string) => {
+        if (!userId) return;
+        await breakFD(fdId);
+    }, [userId, breakFD]);
 
     // Auth guard
     if (!isAuthenticated) {
@@ -436,125 +422,128 @@ export default function InvestPage(): React.ReactElement {
     }
 
     return (
-        <div className="mx-auto max-w-[600px] pb-8">
+        <div className="mx-auto max-w-[1200px] pb-8 px-4">
             {/* Back Button */}
             <button
                 onClick={handleBack}
-                className="flex items-center gap-2 text-sm font-medium mb-6 transition-colors-fast"
+                className="flex items-center gap-2 text-sm font-medium mb-6 transition-colors group"
                 style={{ color: 'var(--text-secondary)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
-                <ArrowLeft className="w-4 h-4" />
-                Back
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                Back to Dashboard
             </button>
 
             {/* Page Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
+            <div className="mb-10 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-2">
                     <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ backgroundColor: 'var(--gold-muted)' }}
+                        className="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center shadow-[0_10px_30px_rgba(163,230,53,0.1)] mb-2 sm:mb-0"
                     >
-                        <Landmark className="w-5 h-5" style={{ color: 'var(--gold)' }} />
+                        <Landmark className="w-7 h-7 text-gold" />
                     </div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-                        Create GrabSave FD
-                    </h1>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)] ml-[52px]">
-                    Lock your funds and earn {INTEREST_RATE}% p.a. interest
-                </p>
-            </div>
-
-            {/* Available Balance Display */}
-            <div
-                className="rounded-xl p-4 mb-6 flex items-center justify-between"
-                style={{
-                    backgroundColor: 'var(--green-muted)',
-                    border: '1px solid rgba(34, 197, 94, 0.2)',
-                }}
-            >
-                <span className="text-sm text-[var(--text-secondary)]">Available Balance</span>
-                <span className="text-lg font-bold" style={{ color: 'var(--green)' }}>
-                    {walletLoading ? 'Loading...' : formatCurrency(availableBalance)}
-                </span>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Amount Input */}
-                <AmountInput
-                    value={amount}
-                    onChange={setAmount}
-                    error={error.amount}
-                    maxAmount={availableBalance}
-                />
-
-                {/* Tenure Slider */}
-                <TenureSlider
-                    value={tenureDays}
-                    onChange={setTenureDays}
-                />
-
-                {/* Live Preview */}
-                <LivePreview
-                    principal={principalValue}
-                    tenureDays={tenureDays}
-                />
-
-                {/* General Error */}
-                {error.general && (
-                    <div
-                        className="rounded-lg p-4 flex items-center gap-3"
-                        style={{
-                            backgroundColor: 'var(--red-muted)',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                        }}
-                    >
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--red)' }} />
-                        <p className="text-sm" style={{ color: 'var(--red)' }}>
-                            {error.general}
+                    <div>
+                        <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">
+                            Investment Hub
+                        </h1>
+                        <p className="text-[var(--text-secondary)] mt-1">
+                            Grow your wealth with GrabSave FDs at 7.5% p.a.
                         </p>
                     </div>
-                )}
+                </div>
+            </div>
 
-                {/* Submit Button */}
-                <button
-                    type="submit"
-                    disabled={!isFormValid || isSubmitting}
-                    className="w-full py-4 rounded-xl font-semibold text-base transition-all-fast flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{
-                        backgroundColor: isFormValid && !isSubmitting ? 'var(--gold)' : 'var(--bg-border)',
-                        color: 'var(--text-inverse)',
-                    }}
-                    onMouseEnter={(e) => {
-                        if (isFormValid && !isSubmitting) {
-                            e.currentTarget.style.backgroundColor = 'var(--gold-hover)';
-                        }
-                    }}
-                    onMouseLeave={(e) => {
-                        if (isFormValid && !isSubmitting) {
-                            e.currentTarget.style.backgroundColor = 'var(--gold)';
-                        }
-                    }}
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Creating your FD...
-                        </>
-                    ) : (
-                        'Lock in GrabSave FD'
-                    )}
-                </button>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+                {/* Left Column: Creation Form (2/5) */}
+                <div className="lg:col-span-2 space-y-6">
+                    <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                        <div className="w-1.5 h-6 bg-gold rounded-full" />
+                        New Investment
+                    </h2>
+                    
+                    {/* Available Balance Display */}
+                    <div className="rounded-2xl p-4 bg-green-500/5 border border-green-500/20 flex items-center justify-between">
+                        <span className="text-sm text-[var(--text-secondary)]">Available to Invest</span>
+                        <span className="text-lg font-bold text-green-500">
+                            {walletLoading ? 'Loading...' : formatCurrency(availableBalance)}
+                        </span>
+                    </div>
 
-                {/* Disclaimer */}
-                <p className="text-xs text-center text-[var(--text-tertiary)]">
-                    By creating this FD, you agree to lock your funds for {tenureDays} days.
-                    Early withdrawal may incur a penalty.
-                </p>
-            </form>
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Amount Input */}
+                        <AmountInput
+                            value={amount}
+                            onChange={setAmount}
+                            error={error.amount}
+                            maxAmount={availableBalance}
+                        />
+
+                        {/* Tenure Slider */}
+                        <TenureSlider
+                            value={tenureDays}
+                            onChange={setTenureDays}
+                        />
+
+                        {/* Live Preview */}
+                        <LivePreview
+                            principal={principalValue}
+                            tenureDays={tenureDays}
+                        />
+
+                        {/* General Error */}
+                        {error.general && (
+                            <div
+                                className="rounded-lg p-4 flex items-center gap-3"
+                                style={{
+                                    backgroundColor: 'var(--red-muted)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                }}
+                            >
+                                <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--red)' }} />
+                                <p className="text-sm" style={{ color: 'var(--red)' }}>
+                                    {error.general}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={!isFormValid || isSubmitting}
+                            className="w-full py-4 rounded-xl font-semibold text-base transition-all-fast flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-gold text-white hover:bg-gold-hover shadow-[0_10px_20px_rgba(163,230,53,0.2)]"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Creating FD...
+                                </>
+                            ) : (
+                                'Lock in GrabSave FD'
+                            )}
+                        </button>
+
+                        {/* Disclaimer */}
+                        <p className="text-[10px] text-center text-[var(--text-tertiary)] uppercase tracking-wider">
+                            Funds locked for {tenureDays} days • Early withdrawal penalty applies
+                        </p>
+                    </form>
+                </div>
+
+                {/* Right Column: Existing Portfolio (3/5) */}
+                <div className="lg:col-span-3 space-y-6">
+                    <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                        <div className="w-1.5 h-6 bg-gold rounded-full" />
+                        My Portfolio
+                    </h2>
+                    
+                    <FDPortfolio
+                        fds={fds}
+                        isLoading={fdsLoading}
+                        onBreakFD={handleBreakFD}
+                        isBreaking={false}
+                    />
+                </div>
+            </div>
 
             {/* Success Modal */}
             {showSuccess && createdFD && (

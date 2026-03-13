@@ -74,7 +74,7 @@ const MobileNavItem = React.memo(function MobileNavItem({
             aria-current={isActive ? 'page' : undefined}
         >
             {isActive && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-[var(--gold)] rounded-b-full" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-[3px] bg-gold rounded-full shadow-[0_0_10px_rgba(163,230,53,0.8)]" />
             )}
             <Icon
                 className={cn(
@@ -118,7 +118,7 @@ const MobilePersonaButton = React.memo(function MobilePersonaButton({
             aria-label="Switch persona"
         >
             {isActive && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-[var(--gold)] rounded-b-full" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-[3px] bg-gold rounded-full shadow-[0_0_10px_rgba(163,230,53,0.8)]" />
             )}
             {activePersona ? (
                 <div className="w-7 h-7 rounded-full bg-[var(--gold)] flex items-center justify-center">
@@ -276,7 +276,7 @@ export function MobileNav({
             <nav
                 className={cn(
                     'fixed bottom-0 left-0 right-0 z-30 h-[var(--mobile-nav-height)]',
-                    'bg-[var(--bg-card)] border-t border-[var(--bg-border)]',
+                    'bg-[rgba(15,15,15,0.85)] backdrop-blur-2xl border-t border-zinc-800/50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]',
                     'md:hidden pb-safe',
                     className
                 )}

@@ -23,6 +23,7 @@ export interface FraudContext {
     mostRecentCredit: CreditEntry | null;
     currentTime: Date;
     currentHourIST: number;
+    lastVerifiedOtpAt: Date | null;
 }
 
 export interface DebitEntry {

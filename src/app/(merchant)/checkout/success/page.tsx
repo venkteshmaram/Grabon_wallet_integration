@@ -67,10 +67,9 @@ export default function CheckoutSuccessPage(): React.ReactElement {
     return (
         <div className="min-h-[calc(100vh-200px)] flex items-center justify-center p-4">
             <div
-                className="w-full max-w-md rounded-2xl p-8 text-center"
+                className="w-full max-w-md rounded-2xl p-8 text-center backdrop-blur-2xl border border-zinc-800/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                 style={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--bg-border)',
+                    backgroundColor: 'rgba(15, 15, 15, 0.75)',
                 }}
             >
                 {/* Success Icon */}
@@ -96,8 +95,7 @@ export default function CheckoutSuccessPage(): React.ReactElement {
 
                 {/* Transaction Details */}
                 <div
-                    className="rounded-xl p-5 mb-8 text-left"
-                    style={{ backgroundColor: 'var(--bg-primary)' }}
+                    className="rounded-xl p-5 mb-8 text-left bg-zinc-900/50 border border-zinc-800/30"
                 >
                     <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
                         <Receipt className="w-4 h-4" style={{ color: 'var(--gold)' }} />

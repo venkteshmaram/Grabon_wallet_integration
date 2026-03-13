@@ -24,6 +24,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             testName,
             testMerchantId,
             testMerchantName,
+            0, // appliedBalancePaisa
             '9999999999'
         );
 

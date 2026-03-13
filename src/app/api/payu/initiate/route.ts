@@ -14,11 +14,12 @@ import { PayUError } from '@/services/payu/payu-types';
 // ============================================
 
 const initiatePaymentSchema = z.object({
-    userId: z.string().uuid('Invalid user ID'),
+    userId: z.string().min(1, 'User ID is required'),
     amountPaisa: z.number().int().positive('Amount must be a positive integer in paisa'),
     merchantId: z.string().min(1, 'Merchant ID is required'),
     merchantName: z.string().min(1, 'Merchant name is required'),
     productInfo: z.string().optional(),
+    appliedBalancePaisa: z.number().int().nonnegative().optional(),
 });
 
 type InitiatePaymentRequest = z.infer<typeof initiatePaymentSchema>;
@@ -69,19 +70,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             merchantId,
             merchantName,
             productInfo,
+            appliedBalancePaisa: validationResult.data.appliedBalancePaisa,
         });
 
         // If fraud check triggered, return fraud result
         if (result.isFlagged) {
+            const statusCode = result.fraudAction === 'REQUIRE_OTP' ? 202 : 403;
             return NextResponse.json(
                 {
                     success: false,
                     isFlagged: true,
                     flagReason: result.flagReason,
                     fraudAction: result.fraudAction,
-                    message: 'Transaction flagged by fraud detection',
+                    message: result.fraudAction === 'REQUIRE_OTP' 
+                        ? 'Additional verification required' 
+                        : 'Transaction blocked by fraud detection',
                 },
-                { status: 403 }
+                { status: statusCode }
             );
         }
 

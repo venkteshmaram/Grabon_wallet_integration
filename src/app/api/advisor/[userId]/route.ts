@@ -24,6 +24,19 @@ export async function GET(
             );
         }
 
+        // Check if user exists to prevent foreign key constraint violations
+        const userExists = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true },
+        });
+
+        if (!userExists) {
+            return NextResponse.json(
+                { error: { message: 'User not found', code: 'USER_NOT_FOUND' } },
+                { status: 404 }
+            );
+        }
+
         // Fetch the latest advisor recommendation from database
         const advisor = await prisma.advisorRecommendation.findFirst({
             where: { userId },

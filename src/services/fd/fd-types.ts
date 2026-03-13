@@ -112,6 +112,7 @@ export interface MaturityCalculation {
     maturityAmountRupees: number;
     interestEarnedPaisa: number;
     interestEarnedRupees: number;
+    startDate: Date;
     maturityDate: Date;
 }
 

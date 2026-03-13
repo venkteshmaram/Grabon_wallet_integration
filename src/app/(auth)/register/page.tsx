@@ -245,18 +245,23 @@ export default function RegisterPage() {
     return (
         <div className="w-full">
             {/* Logo */}
-            <div className="text-center mb-8">
-                <h1 className="text-[32px] font-bold">
-                    <span className="text-[var(--gold)]">Grab</span>
-                    <span className="text-[var(--text-primary)]">Cash</span>
-                </h1>
-                <p className="mt-2 text-[16px] text-[var(--text-secondary)]">
-                    Create your account
+            <div className="flex flex-col items-center mb-10 text-center">
+                <div className="flex items-center gap-4 mb-2">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gold shadow-[0_0_20px_rgba(163,230,53,0.3)] transform transition-transform hover:scale-105 active:scale-95">
+                        <CheckCircle className="w-6 h-6 text-background" />
+                    </div>
+                    <h1 className="text-4xl font-black tracking-tighter">
+                        <span className="text-gold shadow-gold-sm">Grab</span>
+                        <span className="text-foreground">Cash</span>
+                    </h1>
+                </div>
+                <p className="text-[var(--text-secondary)] text-sm font-medium tracking-wide">
+                    Start your <span className="text-gold">investment journey</span> today.
                 </p>
             </div>
 
             {/* Main Card */}
-            <div className="bg-[var(--bg-card)] border border-[var(--bg-border)] rounded-[12px] p-8">
+            <div className="bg-[rgba(15,15,15,0.7)] backdrop-blur-2xl border border-zinc-800/50 rounded-3xl p-6 sm:p-10 shadow-2xl overflow-hidden">
                 {/* General Error Banner */}
                 {errors.general && (
                     <div className="mb-6 p-3 bg-[var(--red-muted)] border border-[var(--red)] border-opacity-30 rounded-lg">
@@ -348,10 +353,10 @@ export default function RegisterPage() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-[48px] bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--text-inverse)] font-semibold text-[14px] rounded-lg transition-colors duration-150 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-6"
+                        className="w-full h-[52px] bg-gold hover:bg-gold-hover text-background font-black text-sm uppercase tracking-widest rounded-2xl transition-all duration-300 transform active:scale-[0.98] shadow-[0_10px_30px_rgba(163,230,53,0.2)] flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-8"
                     >
                         {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-6 h-6 animate-spin" />
                         ) : (
                             'Create Account'
                         )}

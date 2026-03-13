@@ -52,11 +52,11 @@ interface StatCardProps {
 function StatCard({ label, value, icon, color }: StatCardProps): React.ReactElement {
     return (
         <div
-            className="rounded-xl p-4 transition-all-fast"
+            className="rounded-2xl p-5 transition-all-fast backdrop-blur-xl border border-zinc-800/50"
             style={{
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--bg-border)',
-                borderTop: `2px solid ${color}`,
+                backgroundColor: 'rgba(15, 15, 15, 0.7)',
+                borderTop: `3px solid ${color}`,
+                boxShadow: `0 4px 20px rgba(0,0,0,0.2), 0 0 10px ${color}20`
             }}
         >
             <div className="flex items-start justify-between mb-2">
@@ -103,10 +103,9 @@ interface ChartSectionProps {
 function ChartSection({ title, subtitle, children }: ChartSectionProps): React.ReactElement {
     return (
         <div
-            className="rounded-xl p-5"
+            className="rounded-2xl p-6 backdrop-blur-xl border border-zinc-800/50 shadow-2xl"
             style={{
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--bg-border)',
+                backgroundColor: 'rgba(15, 15, 15, 0.6)',
             }}
         >
             <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">
@@ -190,21 +189,24 @@ export default function AnalyticsPage(): React.ReactElement {
     return (
         <div className="mx-auto max-w-[1200px] pb-8">
             {/* Page Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
+            <div className="mb-10 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-2">
                     <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(163,230,53,0.3)] mb-2 sm:mb-0"
                         style={{ backgroundColor: 'var(--gold-muted)' }}
                     >
-                        <BarChart3 className="w-5 h-5" style={{ color: 'var(--gold)' }} />
+                        <BarChart3 className="w-7 h-7" style={{ color: 'var(--gold)' }} />
                     </div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-                        Analytics
-                    </h1>
+                    <div>
+                        <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">
+                            Analytics
+                        </h1>
+                        <div className="h-1 w-20 bg-gold rounded-full my-2 shadow-[0_0_15px_rgba(163,230,53,0.5)] mx-auto sm:mx-0" />
+                        <p className="text-[var(--text-secondary)]">
+                            Your financial insights and trends
+                        </p>
+                    </div>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)]">
-                    Your financial insights and trends
-                </p>
             </div>
 
             {/* Stats Row */}

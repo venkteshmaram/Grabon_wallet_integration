@@ -261,6 +261,7 @@ export function calculateMaturityDetails(
         maturityAmountRupees: paisaToRupees(maturityAmountPaisa),
         interestEarnedPaisa,
         interestEarnedRupees: paisaToRupees(interestEarnedPaisa),
+        startDate,
         maturityDate,
     };
 }

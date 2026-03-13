@@ -5,6 +5,7 @@ import { createFD, getUserFDs } from '@/services/fd';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+        console.log('[API_FD_CREATE] Request body:', body);
         const { userId, principalPaisa, tenureDays } = body;
 
         // Create the FD
@@ -14,19 +15,13 @@ export async function POST(request: NextRequest) {
             tenureDays,
         });
 
+        console.log('[API_FD_CREATE] Success:', fd.id);
         return NextResponse.json({
             success: true,
-            fd: {
-                id: fd.id,
-                principal: `₹${fd.principalRupees}`,
-                maturityAmount: `₹${fd.maturityAmountRupees}`,
-                interestRate: `${fd.interestRate}%`,
-                tenureDays: fd.tenureDays,
-                maturityDate: fd.maturityDate,
-                status: fd.status,
-            },
+            data: fd,
         });
     } catch (error) {
+        console.error('[API_FD_CREATE] Error:', error);
         return NextResponse.json(
             {
                 success: false,

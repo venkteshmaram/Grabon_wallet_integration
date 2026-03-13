@@ -49,6 +49,8 @@ export type LedgerType =
     | 'CASHBACK_CREDIT'
     | 'CASHBACK_SETTLEMENT'
     | 'PAYU_SPEND'
+    | 'PAYU_EXTERNAL'
+    | 'REWARD_SPEND'
     | 'FD_LOCK'
     | 'FD_UNLOCK'
     | 'FD_INTEREST';
@@ -185,6 +187,7 @@ export interface SpendBalanceInput {
     merchantId: string;
     merchantName: string;
     description: string;
+    type?: LedgerType;
 }
 
 /**

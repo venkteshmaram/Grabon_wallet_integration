@@ -7,7 +7,7 @@
 
 import React, { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, Lock, Sparkles, Wallet } from 'lucide-react';
+import { Clock, Lock, Sparkles, Wallet, Landmark } from 'lucide-react';
 
 // ============================================
 // TYPES
@@ -268,7 +268,7 @@ export function BalanceCard({
 
     // Navigation handlers
     const handlePay = useCallback(() => {
-        router.push('/checkout');
+        router.push('/merchants');
     }, [router]);
 
     const handleInvest = useCallback(() => {
@@ -297,11 +297,11 @@ export function BalanceCard({
 
     return (
         <div
-            className="w-full rounded-[var(--radius-lg)] p-6"
+            className="w-full rounded-2xl p-8 backdrop-blur-xl transition-all duration-300 group"
             style={{
-                backgroundColor: 'var(--bg-card)',
-                borderTop: '3px solid var(--gold)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+                backgroundColor: 'rgba(15, 15, 15, 0.7)',
+                border: '1px solid rgba(163, 230, 53, 0.1)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.05)',
             }}
         >
             {/* Top Row */}
@@ -334,8 +334,8 @@ export function BalanceCard({
                     Available Balance
                 </p>
                 <h2
-                    className="text-5xl font-bold mb-1"
-                    style={{ color: 'var(--green)' }}
+                    className="text-6xl font-black mb-1 tracking-tight"
+                    style={{ color: 'var(--gold)', textShadow: '0 0 30px rgba(163,230,53,0.2)' }}
                 >
                     {formatCurrency(availableBalance)}
                 </h2>
@@ -369,13 +369,16 @@ export function BalanceCard({
                 />
             </div>
 
-            {/* Three Action Buttons Row */}
-            <div className="flex gap-3">
+            {/* Four Action Buttons Row */}
+            <div className="flex flex-wrap gap-3">
                 <ActionButton variant="primary" onClick={handlePay}>
                     Pay with GrabCash
                 </ActionButton>
                 <ActionButton variant="secondary" onClick={handleInvest}>
                     Invest in GrabSave
+                </ActionButton>
+                <ActionButton variant="secondary" onClick={() => router.push('/wallet/transfer')}>
+                    Send to Bank
                 </ActionButton>
                 <ActionButton variant="ghost" onClick={handleViewHistory}>
                     View History

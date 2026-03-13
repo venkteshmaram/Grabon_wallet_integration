@@ -34,29 +34,30 @@ export default function HomePage() {
     ];
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="min-h-screen bg-background">            {/* Navigation */}
+            <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-black/80 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-xl bg-gold flex items-center justify-center">
-                                <Wallet className="w-5 h-5 text-background" />
-                            </div>
-                            <span className="text-xl font-bold">
-                                <span className="text-gold">Grab</span>
-                                <span className="text-foreground">Cash</span>
-                            </span>
+                    <div className="flex items-center justify-between h-20">
+                        <div className="flex items-center gap-3">
+                            <Link href="/" className="flex items-center gap-2">
+                                <img src="/logo.png" alt="Grabcash Logo" className="w-10 h-10 object-contain" />
+                                <span className="text-2xl font-bold tracking-tight">
+                                    <span className="text-gold">Grab</span>
+                                    <span className="text-white">Cash</span>
+                                </span>
+                            </Link>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-6">
                             <Link
                                 href="/login"
-                                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                className="text-sm font-semibold text-zinc-400 hover:text-gold transition-colors"
                             >
                                 Sign In
                             </Link>
                             <Link href="/login">
-                                <Button size="sm">Get Started</Button>
+                                <Button size="lg" className="rounded-full px-8 bg-gold hover:bg-gold-hover text-black font-bold">
+                                    Get Started
+                                </Button>
                             </Link>
                         </div>
                     </div>
@@ -64,61 +65,72 @@ export default function HomePage() {
             </nav>
 
             {/* Hero Section */}
-            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-                {/* Background Effects */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold/5 rounded-full blur-3xl" />
-                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gold/3 rounded-full blur-3xl" />
+            <section className="relative min-h-screen flex items-center pt-48 pb-20 overflow-hidden bg-black">
+                {/* Background Hero Image with Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <img 
+                        src="/hero_branded.png" 
+                        alt="Background" 
+                        className="w-full h-full object-cover opacity-50 blur-[1px]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black/20" />
                 </div>
 
-                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center max-w-3xl mx-auto">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold-muted border border-gold-border mb-8">
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                    <div className="max-w-4xl">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold/10 border border-gold/20 mb-8 animate-fade-in">
                             <Sparkles className="w-4 h-4 text-gold" />
-                            <span className="text-sm font-medium text-gold">Now with AI-powered insights</span>
+                            <span className="text-sm font-semibold text-gold tracking-wide uppercase">Smart Wallet Intelligence</span>
                         </div>
 
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-                            Your Cashback.
+                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tighter leading-[0.95] mb-8 text-white">
+                            SPEND. EARN.
                             <br />
-                            <span className="text-gold">Automatically Invested.</span>
+                            <span className="text-gold">GROW AUTOMATICALLY.</span>
                         </h1>
 
-                        <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-                            GrabCash is the smart wallet that turns your everyday spending into wealth.
-                            Earn cashback, auto-invest in FDs, and get AI-powered financial advice.
+                        <p className="text-lg sm:text-xl text-zinc-400 mb-12 max-w-2xl leading-relaxed">
+                            The intelligent wallet that turns every transaction into long-term wealth. 
+                            Earn cashback and watch it grow in high-yield FDs automatically.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
                             <Link href="/login" className="w-full sm:w-auto">
-                                <Button size="lg" className="w-full gap-2">
-                                    Create Free Account
-                                    <ArrowRight className="w-4 h-4" />
+                                <Button size="xl" className="w-full h-16 px-10 gap-3 rounded-full bg-gold hover:bg-gold-hover text-black font-extrabold text-lg shadow-[0_0_30px_rgba(163,230,53,0.3)] transition-all hover:scale-105">
+                                    Start Growing Now
+                                    <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                                 </Button>
                             </Link>
                             <Link href="/login" className="w-full sm:w-auto">
-                                <Button size="lg" variant="outline" className="w-full">Sign In</Button>
+                                <Button size="xl" variant="outline" className="w-full h-16 px-10 rounded-full border-zinc-800 text-white hover:bg-zinc-900 font-bold text-lg">
+                                    How it Works
+                                </Button>
                             </Link>
                         </div>
 
                         {/* Trust Badges */}
-                        <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-green" />
-                                <span>256-bit Encryption</span>
+                        <div className="flex flex-wrap items-center gap-10 mt-20">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-bold text-white tracking-tight">7.5%</span>
+                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">FD Interest Rate</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-green" />
-                                <span>RBI Compliant</span>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-bold text-white tracking-tight">Instant</span>
+                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Cashback Credits</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-green" />
-                                <span>Instant Withdrawals</span>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-bold text-white tracking-tight">RBI</span>
+                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Compliant Security</span>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                {/* Decorative Elements */}
+                <div className="absolute bottom-0 right-0 w-1/2 h-1/2 bg-gold/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
             </section>
+
 
             {/* Stats Section */}
             <section className="border-y border-border bg-card/50">
@@ -193,20 +205,41 @@ export default function HomePage() {
             </section>
 
             {/* Footer */}
-            <footer className="border-t border-border py-12">
+            <footer className="border-t border-zinc-900 bg-black pt-20 pb-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center">
-                                <Wallet className="w-4 h-4 text-background" />
+                    <div className="flex flex-col md:flex-row items-start justify-between gap-12 mb-16">
+                        <div className="flex flex-col gap-6">
+                            <div className="flex items-center gap-2">
+                                <img src="/logo.png" alt="Grabcash" className="w-8 h-8 object-contain" />
+                                <span className="text-xl font-bold tracking-tight">
+                                    <span className="text-gold">Grab</span>
+                                    <span className="text-white">Cash</span>
+                                </span>
                             </div>
-                            <span className="font-bold">
-                                <span className="text-gold">Grab</span>
-                                <span className="text-foreground">Cash</span>
-                            </span>
+                            <p className="text-zinc-500 max-w-xs text-sm leading-relaxed">
+                                The intelligent wallet that turns your cashback into long-term wealth through high-yield automatic investments.
+                            </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                            © 2024 GrabCash. All rights reserved.
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-12">
+                            <div className="flex flex-col gap-4">
+                                <span className="text-xs font-bold text-white uppercase tracking-widest">Platform</span>
+                                <Link href="#" className="text-sm text-zinc-500 hover:text-gold transition-colors">Smart Wallet</Link>
+                                <Link href="#" className="text-sm text-zinc-500 hover:text-gold transition-colors">FD Growth</Link>
+                                <Link href="#" className="text-sm text-zinc-500 hover:text-gold transition-colors">AI Advisor</Link>
+                            </div>
+                            <div className="flex flex-col gap-4">
+                                <span className="text-xs font-bold text-white uppercase tracking-widest">Legal</span>
+                                <Link href="#" className="text-sm text-zinc-500 hover:text-gold transition-colors">Privacy</Link>
+                                <Link href="#" className="text-sm text-zinc-500 hover:text-gold transition-colors">Terms</Link>
+                                <Link href="#" className="text-sm text-zinc-500 hover:text-gold transition-colors">RBI Data</Link>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="pt-8 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <p className="text-xs text-zinc-600 font-medium">
+                            © 2024 GrabCash. Powered by Antigravity Intelligence.
                         </p>
                     </div>
                 </div>

@@ -3,7 +3,7 @@
 // Step 4: API Client + Custom Hooks
 // ============================================
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useWalletStore } from '@/store/wallet-store';
 import type { WalletAnalytics } from '@/store/wallet-store';
 
@@ -62,9 +62,13 @@ interface UseAnalyticsReturn {
 export function useAnalytics(userId: string | undefined): UseAnalyticsReturn {
     // Get state and actions from wallet store
     const analytics = useWalletStore((state) => state.analytics);
-    const isLoading = useWalletStore((state) => state.isLoading);
-    const error = useWalletStore((state) => state.error);
+    const isLoading = useWalletStore((state) => state.status.analytics.loading);
+    const error = useWalletStore((state) => state.status.analytics.error);
     const fetchAnalytics = useWalletStore((state) => state.fetchAnalytics);
+
+    // Track if we've attempted a fetch to prevent race conditions
+    const hasAttemptedFetch = useRef(false);
+    const lastUserId = useRef<string | undefined>(undefined);
 
     /**
      * Manual refetch function
@@ -74,6 +78,7 @@ export function useAnalytics(userId: string | undefined): UseAnalyticsReturn {
         if (!userId) {
             return;
         }
+        hasAttemptedFetch.current = false; // Reset for manual refetch
         await fetchAnalytics(userId);
     }, [userId, fetchAnalytics]);
 
@@ -86,12 +91,18 @@ export function useAnalytics(userId: string | undefined): UseAnalyticsReturn {
             return;
         }
 
-        // Only fetch if analytics data is not already present
-        // This prevents duplicate fetches on re-renders
-        if (!analytics) {
+        // Reset fetch attempt if userId changes
+        if (lastUserId.current !== userId) {
+            hasAttemptedFetch.current = false;
+            lastUserId.current = userId;
+        }
+
+        // Only fetch once per userId session to prevent race conditions
+        if (!hasAttemptedFetch.current) {
+            hasAttemptedFetch.current = true;
             fetchAnalytics(userId);
         }
-    }, [userId, analytics, fetchAnalytics]);
+    }, [userId, fetchAnalytics]);
 
     return {
         analytics,

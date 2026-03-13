@@ -56,10 +56,10 @@ export const FD_INTEREST_RATE = parseFloat(
 
 /**
  * Days before an FD can be broken early (lock period)
- * Default: 7 days
+ * Default: 30 days (Per ASSIGNMENT.MD Line 30)
  */
 export const FD_EARLY_BREAK_LOCK_DAYS = parseInt(
-    process.env.FD_EARLY_BREAK_LOCK_DAYS ?? '7',
+    process.env.FD_EARLY_BREAK_LOCK_DAYS ?? '30',
     10
 );
 

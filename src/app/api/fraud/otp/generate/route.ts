@@ -13,11 +13,10 @@ import { generateOTP, OTPError, VALID_OTP_PURPOSES } from '@/services/otp';
 // ============================================
 
 const generateOTPSchema = z.object({
-    userId: z.string().uuid('Invalid user ID'),
+    userId: z.string().min(1, 'User ID is required'),
     purpose: z.enum(
-        ['FRAUD_VERIFICATION', 'TRANSACTION_CONFIRMATION', 'ACCOUNT_RECOVERY', 'HIGH_VALUE_TRANSACTION'],
-        { message: 'Invalid OTP purpose' }
-    ),
+        ['FRAUD_VERIFICATION', 'TRANSACTION_CONFIRMATION', 'ACCOUNT_RECOVERY', 'HIGH_VALUE_TRANSACTION']
+    ).default('FRAUD_VERIFICATION'),
 });
 
 type GenerateOTPRequest = z.infer<typeof generateOTPSchema>;
@@ -44,14 +43,21 @@ function createErrorResponse(message: string, code: string, status: number = 400
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
-        // Parse request body
-        const body = await request.json();
+        let body;
+        try {
+            body = await request.json();
+            console.log('[OTP_GENERATE] Request body:', JSON.stringify(body));
+        } catch (e) {
+            console.error('[OTP_GENERATE] Failed to parse JSON body');
+            return createErrorResponse('Invalid JSON body', 'INVALID_JSON', 400);
+        }
 
         // Validate request
         const validationResult = generateOTPSchema.safeParse(body);
 
         if (!validationResult.success) {
             const errors = validationResult.error.issues.map((e: { message: string }) => e.message).join(', ');
+            console.error('[OTP_GENERATE] Validation failed:', JSON.stringify(validationResult.error.format()));
             return createErrorResponse(
                 `Validation failed: ${errors}`,
                 'VALIDATION_ERROR',

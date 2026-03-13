@@ -5,6 +5,7 @@
 
 import { differenceInDays, subMinutes } from 'date-fns';
 import { prisma } from '@/lib/prisma';
+import { logToFile } from '@/lib/logger';
 
 // Type for raw ledger entry from Prisma select
 interface RawLedgerEntry {
@@ -69,6 +70,33 @@ export async function checkTransaction(
                 details: { matchCount: whitelistResult.matchCount },
             };
         }
+
+        // --- BYPASS LOGIC ---
+        // If an OTP was verified in the last 60 seconds, bypass REQUIRE_OTP rules
+        const OTP_BYPASS_WINDOW_SECONDS = 60;
+        const lastVerifiedTime = context.lastVerifiedOtpAt ? context.lastVerifiedOtpAt.getTime() : 0;
+        const currentTime = context.currentTime.getTime();
+        const diffSeconds = (currentTime - lastVerifiedTime) / 1000;
+        const isRecentlyVerified = lastVerifiedTime > 0 && Math.abs(diffSeconds) < OTP_BYPASS_WINDOW_SECONDS;
+        
+        logToFile('[FRAUD_ENGINE] OTP Bypass Check', {
+            userId: context.userId,
+            lastVerifiedAt: context.lastVerifiedOtpAt?.toISOString(),
+            currentTime: context.currentTime.toISOString(),
+            diffSeconds,
+            isRecentlyVerified
+        });
+
+        if (isRecentlyVerified) {
+            logToFile('[FRAUD_ENGINE] Bypassing OTP check due to recent verification');
+            return {
+                isFlagged: false,
+                flagReason: 'VERIFIED_RECENTLY',
+                action: 'ALLOW',
+                ruleTriggered: 'BYPASS_OTP',
+            };
+        }
+        // ---------------------
 
         // Rule 2: New User Check (hard block)
         const newUserResult = checkNewUserRule(context, input.amountPaisa);
@@ -182,7 +210,7 @@ async function buildFraudContext(userId: string): Promise<FraudContext> {
         // Fetch transaction history in parallel
         const fiveMinutesAgo = subMinutes(new Date(), 5);
 
-        const [last5Debits, debitsLast5Minutes, mostRecentCredit]: [RawLedgerEntry[], RawLedgerEntry[], { id: string; amount: number; createdAt: Date } | null] = await Promise.all([
+        const [last5Debits, debitsLast5Minutes, mostRecentCredit, mostRecentVerifiedOtp]: [RawLedgerEntry[], RawLedgerEntry[], { id: string; amount: number; createdAt: Date } | null, { usedAt: Date | null } | null] = await Promise.all([
             // Last 5 debit entries for whitelist check
             prisma.ledgerEntry.findMany({
                 where: {
@@ -233,6 +261,18 @@ async function buildFraudContext(userId: string): Promise<FraudContext> {
                     createdAt: true,
                 },
             }),
+
+            // Most recent verified OTP for bypass logic
+            prisma.oTPVerification.findFirst({
+                where: {
+                    userId,
+                    purpose: 'FRAUD_VERIFICATION',
+                    isUsed: true,
+                    usedAt: { not: null },
+                },
+                orderBy: { usedAt: 'desc' },
+                select: { usedAt: true },
+            }),
         ]);
 
         // Get current time in IST (UTC+5:30)
@@ -269,6 +309,7 @@ async function buildFraudContext(userId: string): Promise<FraudContext> {
                 : null,
             currentTime: now,
             currentHourIST,
+            lastVerifiedOtpAt: mostRecentVerifiedOtp?.usedAt || null,
         };
     } catch (error) {
         if (error instanceof FraudError) throw error;

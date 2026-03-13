@@ -111,8 +111,8 @@ const config: Config = {
                     '100%': { backgroundPosition: '200% 0' },
                 },
                 'pulse-gold': {
-                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(245, 166, 35, 0.4)' },
-                    '50%': { boxShadow: '0 0 0 8px rgba(245, 166, 35, 0)' },
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(163, 230, 53, 0.4)' },
+                    '50%': { boxShadow: '0 0 0 8px rgba(163, 230, 53, 0)' },
                 },
                 spin: {
                     from: { transform: 'rotate(0deg)' },

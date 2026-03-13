@@ -13,11 +13,10 @@ import { verifyOTP, OTPError } from '@/services/otp';
 // ============================================
 
 const verifyOTPSchema = z.object({
-    userId: z.string().uuid('Invalid user ID'),
+    userId: z.string().min(1, 'User ID is required'),
     code: z.string().length(6, 'OTP code must be 6 digits').regex(/^\d+$/, 'OTP must contain only numbers'),
     purpose: z.enum(
-        ['FRAUD_VERIFICATION', 'TRANSACTION_CONFIRMATION', 'ACCOUNT_RECOVERY', 'HIGH_VALUE_TRANSACTION'],
-        { message: 'Invalid OTP purpose' }
+        ['FRAUD_VERIFICATION', 'TRANSACTION_CONFIRMATION', 'ACCOUNT_RECOVERY', 'HIGH_VALUE_TRANSACTION']
     ),
 });
 
@@ -82,7 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             );
         } else {
             // Handle specific error cases
-            const statusCode = result.isFrozen ? 403 : 401;
+            const statusCode = result.isFrozen ? 403 : 400;
             return createErrorResponse(
                 result.message,
                 result.errorCode || 'VERIFICATION_FAILED',

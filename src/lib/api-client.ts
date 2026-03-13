@@ -62,10 +62,45 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
     (response) => response,
-    (error: AxiosError<ApiErrorResponse>) => {
+    async (error: AxiosError<ApiErrorResponse>) => {
         // Handle 401 - Unauthorized
         if (error.response?.status === 401) {
-            // Clear auth store and redirect to login
+            const errorCode = error.response.data?.error?.code;
+
+            // Check if it's a token expiration issue
+            if (errorCode === 'TOKEN_EXPIRED') {
+                console.warn('[API] Token expired, attempting refresh...');
+
+                try {
+                    // Attempt to refresh the token
+                    const refreshResponse = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': String(error.config?.headers?.Authorization || ''),
+                        },
+                    });
+
+                    if (refreshResponse.ok) {
+                        const refreshData = await refreshResponse.json();
+                        if (refreshData.data?.token) {
+                            // Update token in auth store
+                            useAuthStore.setState({ token: refreshData.data.token });
+
+                            // Retry the original request with new token
+                            if (error.config) {
+                                error.config.headers.Authorization = `Bearer ${refreshData.data.token}`;
+                                return apiClient.request(error.config);
+                            }
+                        }
+                    }
+                } catch (refreshError) {
+                    console.error('[API] Token refresh failed:', refreshError);
+                }
+            }
+
+            // If refresh failed or not a token expiry, clear auth and redirect
+            console.warn('[API] Authentication failed, logging out...');
             useAuthStore.getState().logout();
             return Promise.reject(error);
         }

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const token = jwt.sign(
             { userId: user.id, email: user.email },
             jwtSecret,
-            { expiresIn: (process.env.JWT_EXPIRY || '24h') as jwt.SignOptions['expiresIn'] }
+            { expiresIn: (process.env.JWT_EXPIRY || '48h') as jwt.SignOptions['expiresIn'] }
         );
 
         // Step 7: Password is never returned

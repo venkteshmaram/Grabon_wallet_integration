@@ -18,7 +18,8 @@ import {
     Loader2,
     ArrowLeft,
     Wallet,
-    ShieldAlert
+    ShieldAlert,
+    Check
 } from 'lucide-react';
 
 // ============================================
@@ -37,6 +38,9 @@ interface FraudCheckResponse {
 
 interface PayUInitiateResponse {
     success: boolean;
+    isFlagged?: boolean;
+    flagReason?: string;
+    fraudAction?: FraudAction;
     payuBaseUrl?: string;
     payuParams?: Record<string, string>;
     data?: {
@@ -115,8 +119,11 @@ function OrderSummary({
 
     return (
         <div
-            className="rounded-xl p-6 mb-6"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--bg-border)' }}
+            className="rounded-2xl p-8 mb-6 backdrop-blur-xl border border-zinc-800/50"
+            style={{ 
+                backgroundColor: 'rgba(15, 15, 15, 0.7)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.2)' 
+            }}
         >
             <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" style={{ color: 'var(--gold)' }} />
@@ -278,6 +285,7 @@ export default function CheckoutPage(): React.ReactElement {
     // Form state
     const [amount, setAmount] = useState(prefilledAmount);
     const [description, setDescription] = useState('');
+    const [useWalletBalance, setUseWalletBalance] = useState(false);
 
     // Payment flow state
     const [isProcessing, setIsProcessing] = useState(false);
@@ -291,8 +299,13 @@ export default function CheckoutPage(): React.ReactElement {
     const [payuParams, setPayuParams] = useState<Record<string, string> | null>(null);
 
     const availableBalance = wallet?.availableRupees ?? 0;
-    const amountValue = parseFloat(amount) || 0;
-    const isSufficient = availableBalance >= amountValue && amountValue > 0;
+    const totalAmountValue = parseFloat(amount) || 0;
+    
+    // Split logic
+    const appliedBalance = useWalletBalance ? Math.min(availableBalance, totalAmountValue) : 0;
+    const finalPayUAmount = totalAmountValue - appliedBalance;
+    
+    const isSufficient = totalAmountValue > 0; // In hybrid mode, we always have "sufficient" balance as PayU handles remainder
 
     useEffect(() => {
         let cancelled = false;
@@ -333,7 +346,7 @@ export default function CheckoutPage(): React.ReactElement {
         try {
             // Step 1: Fraud Check
             const fraudResponse = await apiPost<FraudCheckResponse>('/api/fraud/check', {
-                amountPaisa: convertRupeesToPaisa(amountValue),
+                amountPaisa: convertRupeesToPaisa(totalAmountValue),
                 merchantId: resolvedMerchantId,
                 merchantName: resolvedMerchantName,
             });
@@ -354,19 +367,26 @@ export default function CheckoutPage(): React.ReactElement {
 
             if (action === 'REQUIRE_OTP') {
                 // Generate OTP
-                const otpResponse = await apiPost<{ data: { otp: string; reason: string } }>('/api/fraud/otp/generate', {
+                const otpResponse = await apiPost<{ otpCode: string; purpose: string }>('/api/fraud/otp/generate', {
                     userId,
+                    purpose: 'FRAUD_VERIFICATION',
                 });
 
-                setOtpCode(otpResponse.data?.otp || '');
-                setFlagReason(otpResponse.data?.reason || 'Additional verification required');
+                setOtpCode(otpResponse.otpCode || '');
+                setFlagReason(fraudResponse.data?.reason || 'Additional verification required');
                 setShowOtpModal(true);
                 setIsProcessing(false);
                 return;
             }
 
             if (action === 'ALLOW') {
-                // Proceed to PayU
+                // Special case: 100% Wallet Payment
+                if (finalPayUAmount === 0) {
+                    await processDirectWalletPayment();
+                    return;
+                }
+                
+                // Proceed to PayU with the final amount after wallet deduction
                 await initiatePayU();
             } else {
                 setError('Unexpected response from fraud check. Please try again.');
@@ -377,7 +397,32 @@ export default function CheckoutPage(): React.ReactElement {
             setError(message);
             setIsProcessing(false);
         }
-    }, [isSufficient, userId, resolvedMerchantId, amountValue]);
+    }, [isSufficient, userId, resolvedMerchantId, totalAmountValue, finalPayUAmount]);
+
+    // Process 100% Wallet Payment (No PayU needed)
+    const processDirectWalletPayment = useCallback(async () => {
+        if (!userId || !resolvedMerchantId) return;
+
+        try {
+            const response = await apiPost<{ success: boolean; txnId: string }>('/api/wallet/pay-direct', {
+                userId,
+                amountPaisa: convertRupeesToPaisa(totalAmountValue),
+                merchantId: resolvedMerchantId,
+                merchantName: resolvedMerchantName,
+                productInfo: description || `Direct Wallet Payment at ${resolvedMerchantName}`,
+            });
+
+            if (response.success) {
+                router.push(`/checkout/success?txnId=${response.txnId}`);
+            } else {
+                setError('Wallet payment failed. Please try again.');
+                setIsProcessing(false);
+            }
+        } catch (err) {
+            setError('Failed to process wallet payment');
+            setIsProcessing(false);
+        }
+    }, [userId, totalAmountValue, resolvedMerchantId, resolvedMerchantName, description, router]);
 
     // Initiate PayU payment
     const initiatePayU = useCallback(async () => {
@@ -386,11 +431,33 @@ export default function CheckoutPage(): React.ReactElement {
         try {
             const response = await apiPost<PayUInitiateResponse>('/api/payu/initiate', {
                 userId,
-                amountPaisa: convertRupeesToPaisa(amountValue),
+                amountPaisa: convertRupeesToPaisa(finalPayUAmount),
+                appliedBalancePaisa: convertRupeesToPaisa(appliedBalance),
                 merchantId: resolvedMerchantId,
                 merchantName: resolvedMerchantName,
                 productInfo: description || `Payment at ${resolvedMerchantName}`,
             });
+
+            // Handle fraud flag during initiation
+            if (response.isFlagged && response.fraudAction === 'REQUIRE_OTP') {
+                // Generate OTP if not provided
+                const otpRes = await apiPost<{ otpCode: string }>('/api/fraud/otp/generate', {
+                    userId,
+                    purpose: 'FRAUD_VERIFICATION',
+                });
+                
+                setOtpCode(otpRes.otpCode || '');
+                setFlagReason(response.flagReason || 'Additional verification required');
+                setShowOtpModal(true);
+                setIsProcessing(false);
+                return;
+            }
+
+            if (response.isFlagged) {
+                setError(response.flagReason || 'Transaction blocked by fraud detection');
+                setIsProcessing(false);
+                return;
+            }
 
             const params = response.payuParams ?? response.data?.formParams;
 
@@ -405,7 +472,7 @@ export default function CheckoutPage(): React.ReactElement {
             setError(message);
             setIsProcessing(false);
         }
-    }, [userId, amountValue, resolvedMerchantId, resolvedMerchantName, description]);
+    }, [userId, finalPayUAmount, appliedBalance, resolvedMerchantId, resolvedMerchantName, description]);
 
     // Auto-submit PayU form when params are set
     useEffect(() => {
@@ -419,12 +486,13 @@ export default function CheckoutPage(): React.ReactElement {
         if (!userId) return { verified: false };
 
         try {
-            const response = await apiPost<OTPVerifyResponse>('/api/fraud/otp/verify', {
+            const response = await apiPost<{ verified: boolean; message: string }>('/api/fraud/otp/verify', {
                 userId,
                 code,
+                purpose: 'FRAUD_VERIFICATION',
             });
 
-            return { verified: response.data?.verified || false };
+            return { verified: response.verified || false };
         } catch {
             return { verified: false, attemptsRemaining: 2 };
         }
@@ -447,10 +515,11 @@ export default function CheckoutPage(): React.ReactElement {
         if (!userId) return '';
 
         try {
-            const response = await apiPost<{ data: { otp: string } }>('/api/fraud/otp/generate', {
+            const response = await apiPost<{ otpCode: string }>('/api/fraud/otp/generate', {
                 userId,
+                purpose: 'FRAUD_VERIFICATION',
             });
-            const newOtp = response.data?.otp || '';
+            const newOtp = response.otpCode || '';
             setOtpCode(newOtp);
             return newOtp;
         } catch {
@@ -487,11 +556,12 @@ export default function CheckoutPage(): React.ReactElement {
             </button>
 
             {/* Page Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+            <div className="mb-10 text-center">
+                <h1 className="text-4xl font-black text-[var(--text-primary)] mb-2 tracking-tight">
                     Checkout
                 </h1>
-                <p className="text-sm text-[var(--text-secondary)]">
+                <div className="h-1 w-20 bg-gold mx-auto rounded-full mb-4 shadow-[0_0_15px_rgba(163,230,53,0.5)]" />
+                <p className="text-[var(--text-secondary)]">
                     Complete your payment securely
                 </p>
             </div>
@@ -505,12 +575,50 @@ export default function CheckoutPage(): React.ReactElement {
                 onDescriptionChange={setDescription}
             />
 
-            {/* Balance Check */}
-            {amountValue > 0 && (
-                <BalanceCheck
-                    availableBalance={availableBalance}
-                    requiredAmount={amountValue}
-                />
+            {/* Wallet Balance Integration */}
+            {totalAmountValue > 0 && availableBalance > 0 && (
+                <div
+                    className="rounded-2xl p-6 mb-6 backdrop-blur-xl border border-zinc-800/50 flex items-center justify-between transition-all duration-300"
+                    style={{ 
+                        backgroundColor: useWalletBalance ? 'rgba(163, 230, 53, 0.05)' : 'rgba(15, 15, 15, 0.7)',
+                        borderColor: useWalletBalance ? 'var(--gold)' : 'rgba(39, 39, 42, 0.5)'
+                    }}
+                >
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-full transition-colors ${useWalletBalance ? 'bg-gold text-black' : 'bg-zinc-800 text-zinc-500'}`}>
+                            <Wallet className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-[var(--text-primary)]">Apply GrabCash Balance</p>
+                            <p className="text-xs text-[var(--text-secondary)]">Available: {formatCurrency(availableBalance)}</p>
+                        </div>
+                    </div>
+                    
+                    <button
+                        onClick={() => setUseWalletBalance(!useWalletBalance)}
+                        className={`w-12 h-6 rounded-full relative transition-all duration-300 ${useWalletBalance ? 'bg-gold' : 'bg-zinc-700'}`}
+                    >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${useWalletBalance ? 'left-7' : 'left-1'}`} />
+                    </button>
+                </div>
+            )}
+
+            {/* Payment Breakdown */}
+            {totalAmountValue > 0 && useWalletBalance && appliedBalance > 0 && (
+                <div className="px-6 mb-8 space-y-2 border-l-2 border-gold/30 ml-4 py-2">
+                    <div className="flex justify-between text-sm text-[var(--text-secondary)]">
+                        <span>Order Total</span>
+                        <span>{formatCurrency(totalAmountValue)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-gold font-medium">
+                        <span>Used Rewards</span>
+                        <span>- {formatCurrency(appliedBalance)}</span>
+                    </div>
+                    <div className="flex justify-between text-base text-[var(--text-primary)] font-black pt-2 border-t border-zinc-800">
+                        <span>Pay via Card</span>
+                        <span className="text-lg">{formatCurrency(finalPayUAmount)}</span>
+                    </div>
+                </div>
             )}
 
             {/* Error Display */}
@@ -520,31 +628,22 @@ export default function CheckoutPage(): React.ReactElement {
             <button
                 onClick={handlePay}
                 disabled={!isSufficient || isProcessing}
-                className="w-full py-4 rounded-xl font-semibold text-base transition-all-fast flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 rounded-xl font-black text-lg transition-all-fast flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
                 style={{
                     backgroundColor: isSufficient && !isProcessing ? 'var(--gold)' : 'var(--bg-border)',
                     color: 'var(--text-inverse)',
-                }}
-                onMouseEnter={(e) => {
-                    if (isSufficient && !isProcessing) {
-                        e.currentTarget.style.backgroundColor = 'var(--gold-hover)';
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (isSufficient && !isProcessing) {
-                        e.currentTarget.style.backgroundColor = 'var(--gold)';
-                    }
+                    boxShadow: isSufficient && !isProcessing ? '0 10px 20px -5px rgba(163,230,53,0.3)' : 'none'
                 }}
             >
                 {isProcessing ? (
                     <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Securing your payment...
+                        SECURELY PROCESSING...
                     </>
                 ) : (
                     <>
-                        <Wallet className="w-5 h-5" />
-                        Pay with GrabCash
+                        {finalPayUAmount === 0 ? <Check className="w-6 h-6" /> : <Wallet className="w-6 h-6 group-hover:scale-110 transition-transform" />}
+                        {finalPayUAmount === 0 ? 'CONFIRM WITH GRABCASH' : `PAY ${formatCurrency(finalPayUAmount)} WITH CARD`}
                     </>
                 )}
             </button>

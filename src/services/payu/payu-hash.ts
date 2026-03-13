@@ -249,6 +249,7 @@ export function buildPayUFormParams(
     userName: string,
     merchantId: string,
     merchantName: string,
+    appliedBalancePaisa: number,
     userPhone?: string
 ): PayUFormParams {
     // Validate and get configuration
@@ -269,7 +270,7 @@ export function buildPayUFormParams(
         udf1: userId,
         udf2: merchantId,
         udf3: merchantName,
-        udf4: '',
+        udf4: appliedBalancePaisa.toString(),
         udf5: '',
     };
 
@@ -291,7 +292,7 @@ export function buildPayUFormParams(
         udf1: userId,
         udf2: merchantId,
         udf3: merchantName,
-        udf4: '',
+        udf4: appliedBalancePaisa.toString(),
         udf5: '',
         // Note: service_provider removed - can cause issues with some PayU accounts
     };
