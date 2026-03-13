@@ -17,7 +17,8 @@ Create a `.env` file in the root directory and populate it with the following ke
 DATABASE_URL="postgresql://user:password@localhost:5432/grabcash"
 
 # Auth
-JWT_SECRET="your_32_char_secret_key"
+JWT_SECRET="your_32_char_secret_key" 
+#any random 32char key
 
 # AI Advisor (Claude)
 ANTHROPIC_API_KEY="sk-ant-..."
