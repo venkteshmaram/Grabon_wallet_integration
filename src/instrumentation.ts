@@ -48,9 +48,13 @@ export async function register() {
     console.log('[instrumentation] Starting cron jobs...');
 
     try {
+        // Only run initialization in the Node.js runtime
+        if (process.env.NEXT_RUNTIME !== 'nodejs') {
+            return;
+        }
+
         // Import and start cron jobs
-        // Using dynamic import with webpackIgnore to prevent bundling
-        const { startCronJobs } = await import(/* webpackIgnore: true */ '@/cron');
+        const { startCronJobs } = await import('@/cron');
         startCronJobs();
         console.log('[instrumentation] Cron jobs started successfully');
     } catch (error) {

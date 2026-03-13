@@ -1,18 +1,22 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client/index'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
 const connectionString = process.env.DATABASE_URL
 
-let prisma: PrismaClient
+let prismaInstance: PrismaClient
 
-if (connectionString) {
-    const pool = new Pool({ connectionString })
-    const adapter = new PrismaPg(pool)
-    prisma = new PrismaClient({ adapter })
-} else {
-    // Fallback for build time or missing env
-    prisma = new PrismaClient()
+function getPrisma() {
+    if (prismaInstance) return prismaInstance
+
+    if (connectionString) {
+        const pool = new Pool({ connectionString })
+        const adapter = new PrismaPg(pool as any)
+        prismaInstance = new PrismaClient({ adapter })
+    } else {
+        prismaInstance = new PrismaClient()
+    }
+    return prismaInstance
 }
 
-export { prisma }
+export const prisma = getPrisma()

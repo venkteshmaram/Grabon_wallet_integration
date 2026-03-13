@@ -125,6 +125,8 @@ export interface MonthlyTrend {
     monthIndex: number; // 0-11
     amountPaisa: number;
     amountRupees: number;
+    spentPaisa: number;
+    spentRupees: number;
 }
 
 /**
@@ -152,7 +154,9 @@ export interface WalletAnalytics {
     savingsRate: {
         percentage: number;
         lifetimeEarnedPaisa: number;
+        lifetimeEarnedRupees: number;
         totalSpentPaisa: number;
+        totalSpentRupees: number;
     };
 }
 

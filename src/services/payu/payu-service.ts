@@ -70,6 +70,7 @@ export async function initiatePayment(
                 id: true,
                 name: true,
                 email: true,
+                phone: true,
             },
         });
 
@@ -119,7 +120,8 @@ export async function initiatePayment(
             user.email,
             user.name,
             input.merchantId,
-            input.merchantName
+            input.merchantName,
+            user.phone || undefined
         );
 
         // Step 8: Store pending transaction (for webhook verification)
@@ -249,33 +251,39 @@ export async function handlePayUSuccess(
 
         // Step 3: Get pending transaction data
         const pendingTx = getPendingTransaction(txnId);
-        if (!pendingTx) {
-            // Transaction not in memory - may have expired
-            // Still try to process if we can trust the response
-            // In production, query from database
+
+        // Step 4: Extract transaction data (from memory or UDF fields)
+        // UDF fields are trusted because hash verification passed
+        const userId = pendingTx?.userId || responseParams.udf1 || '';
+        const merchantId = pendingTx?.merchantId || responseParams.udf2 || '';
+        const merchantName = pendingTx?.merchantName || responseParams.udf3 || 'Unknown Merchant';
+
+        if (!userId || !merchantId) {
             throw new PayUError(
-                `Pending transaction not found for ${txnId}`,
+                `Cannot determine transaction details for ${txnId}`,
                 PAYU_ERROR_CODES.TRANSACTION_NOT_FOUND,
                 txnId
             );
         }
 
-        // Step 4: Use stored amount, never trust response
-        const amountPaisa = pendingTx.amountPaisa;
+        // Step 5: Calculate amount (from memory or response)
+        // Response amount is in rupees with 2 decimals, convert to paisa
+        const amountPaisa = pendingTx?.amountPaisa ||
+            Math.round(parseFloat(responseParams.amount) * 100);
 
-        // Step 5: Create ledger entry via wallet service
+        // Step 6: Create ledger entry via wallet service
         const ledgerEntry = await spendBalance({
-            userId: pendingTx.userId,
+            userId,
             amountPaisa,
-            merchantId: pendingTx.merchantId,
-            merchantName: pendingTx.merchantName,
+            merchantId,
+            merchantName,
             description: `PayU Payment - TXN: ${txnId}`,
         });
 
-        // Step 6: Clean up pending transaction
+        // Step 7: Clean up pending transaction (if exists)
         removePendingTransaction(txnId);
 
-        // Step 7: Return success
+        // Step 8: Return success
         return {
             success: true,
             txnId,

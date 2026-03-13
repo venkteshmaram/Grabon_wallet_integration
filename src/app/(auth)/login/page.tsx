@@ -1,109 +1,257 @@
-'use client'
+// ============================================
+// LOGIN PAGE - Dark Charcoal + Gold Theme
+// Step 2 & 3: Auth + Wallet Stores
+// ============================================
 
-import { useState } from 'react'
-import Link from 'next/link'
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Loader2, Wallet } from 'lucide-react';
+import { useAuthStore, PERSONAS } from '@/store/auth-store';
+import { useWalletStore } from '@/store/wallet-store';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+
+// Expose wallet store to window for DevTools debugging
+if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).useWalletStore = useWalletStore;
+    console.log('[Dev] useWalletStore exposed to window');
+}
+
+// ============================================
+// TYPES
+// ============================================
+
+interface LoadingState {
+    manual: boolean;
+    personaId: string | null;
+}
+
+// ============================================
+// LOGIN PAGE COMPONENT
+// ============================================
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
+    const router = useRouter();
+    const { login, loginAsPersona, isAuthenticated, error, clearError } = useAuthStore();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setError('')
+    // Form state
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [formError, setFormError] = useState('');
+    const [loading, setLoading] = useState<LoadingState>({
+        manual: false,
+        personaId: null,
+    });
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (isAuthenticated) {
+            router.push('/dashboard');
+        }
+    }, [isAuthenticated, router]);
+
+    // Clear errors when inputs change
+    useEffect(() => {
+        if (formError) setFormError('');
+        if (error) clearError();
+    }, [email, password, formError, error, clearError]);
+
+    // ============================================
+    // MANUAL LOGIN HANDLER
+    // ============================================
+
+    const handleManualSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setFormError('');
+        clearError();
+
+        // Client-side validation
+        if (!email.trim()) {
+            setFormError('Please enter your email address');
+            return;
+        }
+
+        if (!password.trim()) {
+            setFormError('Please enter your password');
+            return;
+        }
+
+        setLoading((prev) => ({ ...prev, manual: true }));
 
         try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            })
+            const result = await login(email, password);
 
-            const data = await res.json()
-
-            if (!res.ok) {
-                setError(data.error || 'Login failed')
+            if (result.success) {
+                window.location.href = '/dashboard';
             } else {
-                window.location.href = '/dashboard'
+                setFormError(result.error || 'Invalid email or password');
             }
-        } catch (err) {
-            setError('An error occurred. Please try again.')
+        } catch {
+            setFormError('Unable to connect. Please try again.');
         } finally {
-            setLoading(false)
+            setLoading((prev) => ({ ...prev, manual: false }));
         }
-    }
+    };
+
+    // ============================================
+    // PERSONA QUICK LOGIN HANDLER
+    // ============================================
+
+    const handlePersonaLogin = async (personaEmail: string, personaId: string) => {
+        setFormError('');
+        clearError();
+        setLoading({ manual: false, personaId });
+
+        try {
+            const result = await loginAsPersona(personaEmail);
+
+            if (result.success) {
+                window.location.href = '/dashboard';
+            } else {
+                setFormError(result.error || 'Login failed');
+                setLoading({ manual: false, personaId: null });
+            }
+        } catch {
+            setFormError('Unable to connect. Please try again.');
+            setLoading({ manual: false, personaId: null });
+        }
+    };
+
+    // ============================================
+    // RENDER
+    // ============================================
 
     return (
-        <>
-            <div className="text-center">
-                <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-                    Sign in to your account
-                </h2>
+        <div className="w-full animate-fade-in-up">
+            {/* Logo and Tagline */}
+            <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gold mb-4 shadow-gold">
+                    <Wallet className="w-8 h-8 text-background" />
+                </div>
+                <h1 className="text-4xl font-bold tracking-tight">
+                    <span className="text-gold">Grab</span>
+                    <span className="text-foreground">Cash</span>
+                </h1>
+                <p className="mt-2 text-base text-muted-foreground">
+                    Your cashback. Invested.
+                </p>
             </div>
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                        {error}
-                    </div>
-                )}
-                <div className="rounded-md shadow-sm -space-y-px">
-                    <div>
-                        <label htmlFor="email" className="sr-only">Email address</label>
-                        <input
+
+            {/* Main Card */}
+            <Card className="border-border shadow-lg">
+                <CardContent className="p-8">
+                    {/* Error Banner */}
+                    {(formError || error) && (
+                        <div className="mb-6 p-3 bg-red-muted border border-red/30 rounded-lg">
+                            <p className="text-sm text-red">
+                                {formError || error}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Manual Login Form */}
+                    <form onSubmit={handleManualSubmit} className="space-y-4">
+                        {/* Email Input */}
+                        <Input
                             id="email"
                             name="email"
                             type="email"
+                            autoComplete="email"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                             placeholder="Email address"
+                            disabled={loading.manual || !!loading.personaId}
                         />
-                    </div>
-                    <div>
-                        <label htmlFor="password" className="sr-only">Password</label>
-                        <input
+
+                        {/* Password Input */}
+                        <Input
                             id="password"
                             name="password"
                             type="password"
+                            autoComplete="current-password"
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                             placeholder="Password"
+                            disabled={loading.manual || !!loading.personaId}
                         />
-                    </div>
-                </div>
 
-                <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                        <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                            Forgot your password?
-                        </Link>
-                    </div>
-                </div>
+                        {/* Sign In Button */}
+                        <Button
+                            type="submit"
+                            size="lg"
+                            className="w-full"
+                            isLoading={loading.manual}
+                            disabled={loading.manual || !!loading.personaId}
+                        >
+                            Sign In
+                        </Button>
+                    </form>
 
-                <div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    {/* Divider */}
+                    <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-border" />
+                        </div>
+                        <div className="relative flex justify-center">
+                            <span className="px-3 bg-card text-muted-foreground text-xs">
+                                Quick Demo Login
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Persona Quick Login Buttons */}
+                    <div className="space-y-2">
+                        {PERSONAS.map((persona) => (
+                            <button
+                                type="button"
+                                key={persona.id}
+                                onClick={() => handlePersonaLogin(persona.email, persona.id)}
+                                disabled={loading.manual || !!loading.personaId}
+                                className="w-full h-11 px-4 bg-transparent border border-border hover:bg-gold-muted hover:border-gold rounded-lg transition-all duration-fast flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {/* Avatar */}
+                                    <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-background text-xs font-bold">
+                                        {loading.personaId === persona.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            persona.initials
+                                        )}
+                                    </div>
+                                    {/* Name */}
+                                    <span className="text-sm text-foreground font-medium">
+                                        {persona.name}
+                                    </span>
+                                </div>
+                                {/* Role Label */}
+                                <span className="text-xs text-muted-foreground group-hover:text-gold transition-colors">
+                                    {persona.role}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Register Link */}
+            <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                    Don't have an account?{' '}
+                    <Link
+                        href="/register"
+                        className="text-gold hover:text-gold-hover font-medium transition-colors"
                     >
-                        {loading ? 'Signing in...' : 'Sign in'}
-                    </button>
-                </div>
-
-                <div className="text-center">
-                    <p className="text-sm text-gray-600">
-                        Do not have an account?{' '}
-                        <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                            Register
-                        </Link>
-                    </p>
-                </div>
-            </form>
-        </>
-    )
+                        Register
+                    </Link>
+                </p>
+            </div>
+        </div>
+    );
 }

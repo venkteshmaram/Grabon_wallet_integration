@@ -236,6 +236,7 @@ function buildReverseHashString(
  * @param userName - Customer name
  * @param merchantId - Merchant ID (stored in udf2)
  * @param merchantName - Merchant name (stored in udf3)
+ * @param userPhone - User phone number (required for PayU sandbox)
  * @returns Complete PayU form parameters
  * @throws PayUError if configuration is missing or invalid
  */
@@ -247,7 +248,8 @@ export function buildPayUFormParams(
     userEmail: string,
     userName: string,
     merchantId: string,
-    merchantName: string
+    merchantName: string,
+    userPhone?: string
 ): PayUFormParams {
     // Validate and get configuration
     const key = getPayUKey();
@@ -282,6 +284,7 @@ export function buildPayUFormParams(
         productinfo: productInfo,
         firstname: userName,
         email: userEmail,
+        phone: userPhone || '9999999999', // Required for PayU sandbox
         surl,
         furl,
         hash,
@@ -290,7 +293,7 @@ export function buildPayUFormParams(
         udf3: merchantName,
         udf4: '',
         udf5: '',
-        service_provider: 'payu_paisa',
+        // Note: service_provider removed - can cause issues with some PayU accounts
     };
 }
 

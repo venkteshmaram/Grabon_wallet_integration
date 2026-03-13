@@ -51,9 +51,7 @@ async function getHandler(
 
         return NextResponse.json(
             {
-                data: {
-                    analytics,
-                },
+                data: analytics,
             },
             { status: 200 }
         );

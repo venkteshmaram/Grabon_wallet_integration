@@ -92,6 +92,8 @@ export interface PayUFormParams {
     firstname: string;
     /** Customer email */
     email: string;
+    /** Customer phone (required for PayU sandbox) */
+    phone?: string;
     /** Success callback URL */
     surl: string;
     /** Failure callback URL */
@@ -108,8 +110,8 @@ export interface PayUFormParams {
     udf4: string;
     /** User-defined field 5 */
     udf5: string;
-    /** Service provider (always 'payu_paisa') */
-    service_provider: string;
+    /** Service provider (optional - can cause issues with some accounts) */
+    service_provider?: string;
 }
 
 // ============================================

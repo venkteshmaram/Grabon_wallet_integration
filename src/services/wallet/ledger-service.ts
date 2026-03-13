@@ -203,34 +203,25 @@ async function getMonthlyTrend(
     const entries = await prisma.ledgerEntry.findMany({
         where: {
             userId,
-            direction: 'CREDIT',
             status: 'SETTLED',
             createdAt: { gte: since },
+            type: { not: 'CASHBACK_SETTLEMENT' }, // Avoid double counting settlement transfers
         },
         select: {
             amount: true,
+            direction: true,
             createdAt: true,
         },
     });
 
     const monthMap = new Map<
         string,
-        { amount: number; year: number; monthIndex: number }
+        { earned: number; spent: number; year: number; monthIndex: number }
     >();
 
     const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
 
     for (const entry of entries) {
@@ -239,15 +230,16 @@ async function getMonthlyTrend(
         const monthIndex = date.getMonth();
         const key = `${year}-${monthIndex}`;
 
-        const current = monthMap.get(key);
-        if (current) {
-            current.amount += entry.amount;
+        let current = monthMap.get(key);
+        if (!current) {
+            current = { earned: 0, spent: 0, year, monthIndex };
+            monthMap.set(key, current);
+        }
+
+        if (entry.direction === 'CREDIT') {
+            current.earned += entry.amount;
         } else {
-            monthMap.set(key, {
-                amount: entry.amount,
-                year,
-                monthIndex,
-            });
+            current.spent += entry.amount;
         }
     }
 
@@ -256,8 +248,10 @@ async function getMonthlyTrend(
             month: `${months[data.monthIndex]} ${data.year}`,
             year: data.year,
             monthIndex: data.monthIndex,
-            amountPaisa: data.amount,
-            amountRupees: paisaToRupees(data.amount),
+            amountPaisa: data.earned,
+            amountRupees: paisaToRupees(data.earned),
+            spentPaisa: data.spent,
+            spentRupees: paisaToRupees(data.spent),
         }))
         .sort((a, b) => {
             if (a.year !== b.year) return a.year - b.year;
@@ -327,7 +321,9 @@ async function getSavingsRate(
 ): Promise<{
     percentage: number;
     lifetimeEarnedPaisa: number;
+    lifetimeEarnedRupees: number;
     totalSpentPaisa: number;
+    totalSpentRupees: number;
 }> {
     const [lifetimeEarned, totalSpent] = await Promise.all([
         prisma.ledgerEntry.aggregate({
@@ -354,7 +350,9 @@ async function getSavingsRate(
     return {
         percentage: spent > 0 ? Math.round((earned / spent) * 100) : 0,
         lifetimeEarnedPaisa: earned,
+        lifetimeEarnedRupees: paisaToRupees(earned),
         totalSpentPaisa: spent,
+        totalSpentRupees: paisaToRupees(spent),
     };
 }
 

@@ -20,6 +20,8 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Sidebar, Header, MobileNav } from '@/components/layout';
 import { Persona, DEFAULT_PERSONAS } from '@/types/layout';
+import { useAuthStore } from '@/store/auth-store';
+import { useWalletStore } from '@/store/wallet-store';
 
 // ============================================
 // TYPES
@@ -35,52 +37,66 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const router = useRouter();
+    const { isAuthenticated, userId, loginAsPersona, logout } = useAuthStore();
+    const { refreshAll, clearStore } = useWalletStore();
 
-    // State for active persona
+    // State for local UI synchronization
     const [activePersona, setActivePersona] = useState<Persona | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
 
-    // Load persona from localStorage on mount
+    // Auth guard and initial data loading
     useEffect(() => {
-        const storedPersonaId = localStorage.getItem('activePersonaId');
-        if (storedPersonaId) {
-            const persona = DEFAULT_PERSONAS.find((p) => p.id === storedPersonaId);
+        if (!isAuthenticated) {
+            router.push('/login');
+            return;
+        }
+
+        // Identify active persona from current user email if possible
+        const userEmail = useAuthStore.getState().userEmail;
+        if (userEmail) {
+            const persona = DEFAULT_PERSONAS.find((p) => p.email === userEmail);
             if (persona) {
                 setActivePersona(persona);
             }
         }
-        setIsLoading(false);
-    }, []);
+
+        // Initial data fetch if authenticated
+        if (userId) {
+            refreshAll(userId);
+        }
+    }, [isAuthenticated, userId, router, refreshAll]);
 
     // Handle persona switch
-    const handlePersonaSwitch = useCallback((persona: Persona) => {
-        setActivePersona(persona);
-        localStorage.setItem('activePersonaId', persona.id);
-
-        // TODO: In a real implementation, this would:
-        // 1. Call login API with persona credentials
-        // 2. Store JWT token
-        // 3. Refresh wallet data for the new persona
-        console.log(`Switched to persona: ${persona.name} (${persona.email})`);
-    }, []);
+    const handlePersonaSwitch = useCallback(async (persona: Persona) => {
+        try {
+            // 1. Perform quick login via auth store
+            const result = await loginAsPersona(persona.email);
+            
+            if (result.success) {
+                setActivePersona(persona);
+                // 2. Fetch all data for the new user context
+                const newUserId = useAuthStore.getState().userId;
+                if (newUserId) {
+                    await refreshAll(newUserId);
+                }
+                console.log(`Successfully switched to persona: ${persona.name}`);
+            } else {
+                console.error('Failed to switch persona:', result.error);
+            }
+        } catch (error) {
+            console.error('Error during persona switch:', error);
+        }
+    }, [loginAsPersona, refreshAll]);
 
     // Handle logout
     const handleLogout = useCallback(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('activePersonaId');
+        clearStore();
+        logout();
         router.push('/login');
-    }, [router]);
+    }, [router, logout, clearStore]);
 
-    // Show loading state
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-[var(--gold)] border-t-transparent rounded-full spinner" />
-                    <span className="text-[var(--text-secondary)] text-sm">Loading...</span>
-                </div>
-            </div>
-        );
+    // Show loading state or guard
+    if (!isAuthenticated && typeof window !== 'undefined') {
+        return null; // Let the useEffect handle the redirect
     }
 
     return (

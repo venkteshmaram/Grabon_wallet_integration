@@ -6,7 +6,11 @@ export async function GET() {
         const merchants = await prisma.merchant.findMany({
             where: { isActive: true },
         })
-        return NextResponse.json({ merchants })
+        // Keep both keys for backward compatibility across pages/hooks
+        return NextResponse.json({
+            data: merchants,
+            merchants,
+        })
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch merchants' }, { status: 500 })
     }

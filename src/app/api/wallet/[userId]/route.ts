@@ -51,9 +51,7 @@ async function getHandler(
 
         return NextResponse.json(
             {
-                data: {
-                    balance,
-                },
+                data: balance,
             },
             { status: 200 }
         );
