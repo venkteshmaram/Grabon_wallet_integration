@@ -97,22 +97,9 @@ export function useAdvisor(userId: string | undefined): UseAdvisorReturn {
         setRefreshError(null);
 
         try {
-            // Create an AbortController for timeout handling
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
-
-            const response = await apiPost<RefreshAdvisorResponse>(
-                `/api/advisor/${userId}/refresh`,
-                {},
-                { signal: controller.signal }
-            );
-
-            clearTimeout(timeoutId);
-
-            if (response.data) {
-                // Update advisor in store
-                await fetchAdvisor(userId);
-            }
+            // Use the real-time refresh action from useWalletStore
+            const refreshAdvisor = useWalletStore.getState().refreshAdvisor;
+            await refreshAdvisor(userId);
         } catch (err) {
             const errorMessage = err instanceof Error
                 ? err.message

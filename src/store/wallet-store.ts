@@ -214,6 +214,7 @@ interface WalletState {
     fetchLedger: (userId: string, filters?: LedgerFilters) => Promise<void>;
     fetchFDs: (userId: string) => Promise<void>;
     fetchAdvisor: (userId: string) => Promise<void>;
+    refreshAdvisor: (userId: string) => Promise<void>; // Real-time refresh
     fetchAnalytics: (userId: string) => Promise<void>;
     refreshAll: (userId: string) => Promise<void>;
     clearStore: () => void;
@@ -405,7 +406,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     },
 
     // ============================================
-    // FETCH ADVISOR
+    // FETCH ADVISOR (Passive)
     // ============================================
     fetchAdvisor: async (userId: string) => {
         set(state => ({ status: { ...state.status, advisor: { loading: true, error: null } } }));
@@ -419,7 +420,29 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             console.warn(`[WalletStore] Fetch advisor error (might be new user):`, err);
             set(state => ({
                 advisor: null,
-                status: { ...state.status, advisor: { loading: false, error: null } } // Don't block UI for advisor failure
+                status: { ...state.status, advisor: { loading: false, error: null } }
+            }));
+        }
+    },
+
+    // ============================================
+    // REFRESH ADVISOR (Active AI Generation)
+    // ============================================
+    refreshAdvisor: async (userId: string) => {
+        set(state => ({ status: { ...state.status, advisor: { loading: true, error: null } } }));
+        try {
+            const { apiPost } = await import('@/lib/api-client');
+            const response = await apiPost<AdvisorApiResponse>(`/api/advisor/${userId}/refresh`, {});
+            if (response.data) {
+                set(state => ({
+                    advisor: response.data,
+                    status: { ...state.status, advisor: { loading: false, error: null } }
+                }));
+            }
+        } catch (err) {
+            console.error(`[WalletStore] Refresh advisor error:`, err);
+            set(state => ({
+                status: { ...state.status, advisor: { loading: false, error: 'Failed to refresh AI advisor' } }
             }));
         }
     },
@@ -466,29 +489,25 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             console.log(`[WalletStore] Refreshing all data for ${userId}...`);
 
             // Phase 1: Fetch critical data first (wallet + ledger)
-            // These are needed for the UI to display basic info
             const criticalResults = await Promise.allSettled([
                 get().fetchWallet(userId),
                 get().fetchLedger(userId),
             ]);
 
-            // Check if critical fetches succeeded
             const criticalErrors = criticalResults
                 .filter(r => r.status === 'rejected')
                 .map(r => (r as PromiseRejectedResult).reason);
 
             if (criticalErrors.length > 0) {
                 console.error('[WalletStore] Critical data fetch failed:', criticalErrors);
-                // Continue to try secondary data, but log the error
             }
 
-            // Phase 2: Fetch secondary data with a small delay to prevent DB overload
-            // These can fail gracefully without breaking the UI
+            // Phase 2: Fetch secondary data (Real-time Advisor Refresh!)
             await new Promise(resolve => setTimeout(resolve, 100));
 
             await Promise.allSettled([
                 get().fetchFDs(userId),
-                get().fetchAdvisor(userId),
+                get().refreshAdvisor(userId), // Real AI refresh
                 get().fetchAnalytics(userId),
             ]);
 
