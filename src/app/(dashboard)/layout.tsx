@@ -42,6 +42,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     // State for local UI synchronization
     const [activePersona, setActivePersona] = useState<Persona | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // Auth guard and initial data loading
     useEffect(() => {
@@ -94,35 +99,38 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         router.push('/login');
     }, [router, logout, clearStore]);
 
+    // Avoid rendering pre-hydration shell (prevents duplicate/empty top block flashes)
+    if (!isMounted) {
+        return null;
+    }
+
     // Show loading state or guard
-    if (!isAuthenticated && typeof window !== 'undefined') {
+    if (!isAuthenticated) {
         return null; // Let the useEffect handle the redirect
     }
 
     return (
-        <div className="flex h-full overflow-hidden bg-[var(--bg-primary)]">
+        <div className="flex min-h-screen bg-[var(--bg-primary)]">
             {/* Sidebar - Desktop Only */}
             <Sidebar
                 activePersona={activePersona}
                 onPersonaSwitch={handlePersonaSwitch}
                 onLogout={handleLogout}
+                className="h-screen sticky top-0"
             />
 
             {/* Right Side Content Column */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                {/* Scrollable Container */}
-                <div className="flex-1 overflow-y-auto scroll-smooth">
-                    {/* Header - Sticky in-flow */}
-                    <Header
-                        activePersona={activePersona}
-                    />
+            <div className="flex-1 flex flex-col min-w-0 relative">
+                {/* Header - Sticky */}
+                <Header
+                    activePersona={activePersona}
+                />
 
-                    <main className="pb-[var(--mobile-nav-height)] md:pb-0">
-                        <div className="px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 pt-0">
-                            {children}
-                        </div>
-                    </main>
-                </div>
+                <main className="flex-1 pb-[var(--mobile-nav-height)] md:pb-0">
+                    <div className="px-4 pb-4 sm:px-6 sm:pb-6 lg:px-8 lg:pb-8 pt-0">
+                        {children}
+                    </div>
+                </main>
             </div>
 
             {/* Mobile Navigation - Mobile Only */}
