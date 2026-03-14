@@ -17,8 +17,8 @@ async function main() {
     }
 
     console.log(`User: ${user.name} (${user.id})`);
-    console.log(`Wallet Balance: ₹${(user.wallet?.availablePaisa ?? 0) / 100}`);
-    console.log(`Pending Balance: ₹${(user.wallet?.pendingPaisa ?? 0) / 100}`);
+    console.log(`Wallet Balance: ₹${(user.wallet?.availableBalance ?? 0) / 100}`);
+    console.log(`Pending Balance: ₹${(user.wallet?.pendingBalance ?? 0) / 100}`);
 
     console.log('\n--- Recent Ledger Entries ---');
     const ledger = await prisma.ledgerEntry.findMany({

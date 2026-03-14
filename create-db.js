@@ -1,9 +1,22 @@
 
 const { Client } = require('pg');
+require('dotenv').config();
 
 async function main() {
+  // Use the DATABASE_URL from .env
+  const dbUrl = process.env.DATABASE_URL;
+  
+  if (!dbUrl) {
+    console.error('Error: DATABASE_URL not found in .env');
+    return;
+  }
+
+  // We need to connect to the 'postgres' default database first to create our new DB
+  // So we replace the DB name at the end of the connection string with 'postgres'
+  const rootUrl = dbUrl.substring(0, dbUrl.lastIndexOf('/')) + '/postgres';
+
   const client = new Client({
-    connectionString: "postgresql://postgres:Venkatesh%402284@localhost:5432/postgres" // Connect to default 'postgres' db
+    connectionString: rootUrl
   });
 
   try {

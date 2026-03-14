@@ -15,8 +15,8 @@ async function main() {
 
         console.log('USER_ID:', user.id);
         console.log('USER_NAME:', user.name);
-        console.log('AVAILABLE_PAISA:', user.wallet?.availablePaisa);
-        console.log('PENDING_PAISA:', user.wallet?.pendingPaisa);
+        console.log('AVAILABLE_PAISA:', user.wallet?.availableBalance);
+        console.log('PENDING_PAISA:', user.wallet?.pendingBalance);
 
         const ledger = await prisma.ledgerEntry.findMany({
             where: { userId: user.id },
